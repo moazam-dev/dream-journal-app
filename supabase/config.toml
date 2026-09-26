@@ -1,0 +1,11 @@
+# Supabase CLI settings for this project.
+project_id = "dream-journal"
+
+[functions.analyze-dream]
+# The app has no logged-in user yet, so there is no user token to check.
+# The function checks the app's publishable key itself instead (see index.ts).
+verify_jwt = false
+
+[functions.generate-dream-image]
+# Same as above: checked with the publishable key inside the function.
+verify_jwt = false
