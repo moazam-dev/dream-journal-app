@@ -64,6 +64,19 @@ export async function generateDreamImage(dreamId: string): Promise<Dream> {
   );
 }
 
+/**
+ * Asks the `generate-dream-audio` Edge Function (server side) to read the reflection aloud.
+ * The function calls Groq Text-to-Speech, stores the WAV file in Supabase Storage,
+ * saves its link on the dream, and returns the updated dream.
+ */
+export async function generateDreamAudio(dreamId: string): Promise<Dream> {
+  return invokeDreamFunction(
+    'generate-dream-audio',
+    dreamId,
+    'The audio reflection could not be created. Please try again.'
+  );
+}
+
 /** Calls one of our Edge Functions with `{ dreamId }` and returns the updated dream it sends back. */
 async function invokeDreamFunction(
   functionName: string,

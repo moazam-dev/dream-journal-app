@@ -8,7 +8,7 @@ import { DreamImageSection } from '@/components/dream-image-section';
 import { EmptyState } from '@/components/empty-state';
 import { ErrorState } from '@/components/error-state';
 import { LoadingState } from '@/components/loading-state';
-import { PlaceholderSection } from '@/components/placeholder-section';
+import { ReflectionAudioPlayer } from '@/components/reflection-audio-player';
 import { Screen } from '@/components/screen';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { useDreamImage } from '@/hooks/use-dream-image';
@@ -96,10 +96,7 @@ export default function DreamDetailScreen() {
           onRetry={handleRetryReflection}
         />
 
-        <PlaceholderSection
-          title="Audio Reflection"
-          description="A spoken version of the reflection will play here."
-        />
+        <ReflectionAudioPlayer dream={dream} setDream={setDream} />
       </ScrollView>
     </Screen>
   );

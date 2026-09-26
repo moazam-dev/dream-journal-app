@@ -9,3 +9,7 @@ verify_jwt = false
 [functions.generate-dream-image]
 # Same as above: checked with the publishable key inside the function.
 verify_jwt = false
+
+[functions.generate-dream-audio]
+# Same as above: checked with the publishable key inside the function.
+verify_jwt = false

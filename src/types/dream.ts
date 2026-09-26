@@ -9,6 +9,9 @@ export type AnalysisStatus = 'pending' | 'completed' | 'failed';
 /** Where the AI image is: not started, being created on the server, done, or failed (retry). */
 export type ImageStatus = 'pending' | 'generating' | 'completed' | 'failed';
 
+/** Where the spoken reflection is: not made yet, being made, done, or failed (retry). */
+export type AudioStatus = 'pending' | 'generating' | 'completed' | 'failed';
+
 export type Dream = {
   id: string;
   dream_text: string;
@@ -26,4 +29,8 @@ export type Dream = {
   // AI image. `image_url` is a public link to the file in the `dream-images` bucket.
   image_url: string | null;
   image_status: ImageStatus;
+
+  // Spoken reflection. `audio_url` is a public link to the WAV file in the `dream-audio` bucket.
+  audio_url: string | null;
+  audio_status: AudioStatus;
 };
