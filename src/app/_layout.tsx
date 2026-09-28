@@ -10,7 +10,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
 import { BrandColors, Colors, NightColors, VoiceColors } from '@/constants/theme';
-import { SLIDE_BACKGROUNDS } from '@/utils/personalize';
+import { PERSONALIZING_BACKGROUND } from '@/utils/personalize';
 
 // Keep the splash screen up until the brand font has loaded (avoids a flash of the wrong font).
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -79,7 +79,7 @@ export default function RootLayout() {
         {/* No swiping back into onboarding once it's done. */}
         <Stack.Screen
           name="personalizing"
-          options={{ headerShown: false, animation: 'fade', gestureEnabled: false, contentStyle: { backgroundColor: SLIDE_BACKGROUNDS[0] } }}
+          options={{ headerShown: false, animation: 'fade', gestureEnabled: false, contentStyle: { backgroundColor: PERSONALIZING_BACKGROUND } }}
         />
         {/* The Today feed: black, full screen, with its own tab bar. */}
         <Stack.Screen

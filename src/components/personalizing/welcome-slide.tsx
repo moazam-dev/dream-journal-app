@@ -1,234 +1,200 @@
 import { memo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import Animated, { cubicBezier } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
 import { BrandColors, BrandFonts, NightColors } from '@/constants/theme';
 
-import { animate, FADE, POP, SPIN, useFitScale, WORD_IN } from './motion';
+import { animate, BREATHE, CENTER_IN, EASE_OUT, FADE, morph, SOFT_IN, useFitScale } from './motion';
 
 type WelcomeSlideProps = {
   name: string;
   reduceMotion: boolean;
 };
 
-const ORBIT = 300;
-const MOON = 170;
-/** Orbit, gap and tagline together, at full size. */
-const ART_HEIGHT = ORBIT + 40 + 22;
+const CARD_WIDTH = 310;
+const CARD_HEIGHT = 390;
+const BLOB_WIDTH = 160;
+const BLOB_HEIGHT = 150;
+const BLOB_MORPH = morph(BLOB_WIDTH, BLOB_HEIGHT);
+const LILAC = '#C9B8F2';
 
-const FLOAT = {
-  '0%': { transform: [{ translateY: 0 }] },
-  '50%': { transform: [{ translateY: -10 }] },
-  '100%': { transform: [{ translateY: 0 }] },
-};
-const TWINKLE = {
-  '0%': { opacity: 0.5, transform: [{ scale: 0.6 }, { rotate: '0deg' }] },
-  '50%': { opacity: 1, transform: [{ scale: 1 }, { rotate: '45deg' }] },
-  '100%': { opacity: 0.5, transform: [{ scale: 0.6 }, { rotate: '0deg' }] },
-};
-const MOON_SPRING = cubicBezier(0.3, 1.4, 0.5, 1);
-
-/** Little planets riding the orbit, from the design. */
-const PLANETS = [
-  { style: { left: ORBIT / 2 - 9, top: -9 }, size: 18, color: '#F4B8E4', delay: 1000 },
-  { style: { left: 14, bottom: 50 }, size: 12, color: '#A8D8F0', delay: 1150 },
-  { style: { right: 20, bottom: 40 }, size: 14, color: '#F2B8A0', delay: 1300 },
-];
-const CRATERS = [
-  { left: 52, top: 44, size: 30, opacity: 0.35 },
-  { left: 100, top: 96, size: 20, opacity: 0.3 },
-  { left: 44, top: 110, size: 14, opacity: 0.28 },
-];
-const SPARKLES = [
-  { style: { right: 6, top: 30 }, size: 30, color: BrandColors.lime, duration: 2400, delay: 0 },
-  { style: { left: 10, top: 70 }, size: 18, color: '#F4B8E4', duration: 2800, delay: 600 },
-  { style: { left: 60, bottom: 0 }, size: 22, color: BrandColors.lime, duration: 2200, delay: 1100 },
+/** Lilac petals tucked into each corner of the card. */
+const PETALS = [
+  { left: -30, top: -30, rotate: '-35deg' },
+  { right: -30, top: -30, rotate: '35deg' },
+  { left: -30, bottom: -30, rotate: '35deg' },
+  { right: -30, bottom: -30, rotate: '-35deg' },
 ];
 
-/** Slide 1: "welcome to afterdream, {name}!" over a floating lime moon with planets circling it. */
+/** Slide 1: "hi {name}, welcome in." over a breathing lime card with a sleepy blob. */
 export const WelcomeSlide = memo(function WelcomeSlide({ name, reduceMotion }: WelcomeSlideProps) {
-  const { scale, onLayout } = useFitScale(ART_HEIGHT);
-  const words = [
-    { word: 'welcome', delay: 200 },
-    { word: 'to', delay: 320 },
-    { word: 'afterdream,', delay: 440, accent: true },
-    { word: `${name}!`, delay: 600 },
-  ];
+  const { scale, onLayout } = useFitScale(CARD_HEIGHT);
 
   return (
     <View style={styles.slide}>
-      <View accessible accessibilityRole="header" accessibilityLabel={`welcome to afterdream, ${name}!`} style={styles.title}>
-        {words.map(({ word, delay, accent }) => (
-          <Animated.Text
-            key={word}
-            style={[
-              styles.titleText,
-              accent && styles.titleAccent,
-              animate(reduceMotion, { animationName: WORD_IN, animationDuration: 700, animationDelay: delay, animationTimingFunction: 'ease' }),
-            ]}>
-            {word}
-          </Animated.Text>
-        ))}
+      <View accessible accessibilityRole="header" accessibilityLabel={`hi ${name}, welcome in.`} style={styles.title}>
+        <Animated.Text
+          style={[styles.hello, animate(reduceMotion, { animationName: FADE, animationDuration: 1200, animationDelay: 300, animationTimingFunction: 'ease' })]}>
+          hi {name},
+        </Animated.Text>
+        <Animated.Text
+          style={[styles.welcome, animate(reduceMotion, { animationName: SOFT_IN, animationDuration: 1400, animationDelay: 600, animationTimingFunction: 'ease' })]}>
+          welcome in.
+        </Animated.Text>
       </View>
 
       <View style={styles.art} onLayout={onLayout}>
-        <View style={[styles.artInner, { transform: [{ scale }] }]}>
-          <View style={styles.orbit} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
-            <Animated.View
-              style={[styles.ring, animate(reduceMotion, { animationName: FADE, animationDuration: 1000, animationDelay: 600, animationTimingFunction: 'ease' })]}
-            />
-            <Animated.View
-              style={[
-                StyleSheet.absoluteFill,
-                animate(reduceMotion, { animationName: SPIN, animationDuration: 14000, animationTimingFunction: 'linear', animationIterationCount: 'infinite' }),
-              ]}>
-              {PLANETS.map((p) => (
-                <Animated.View
-                  key={p.color}
-                  style={[
-                    styles.planet,
-                    p.style,
-                    { width: p.size, height: p.size, borderRadius: p.size / 2, backgroundColor: p.color },
-                    animate(reduceMotion, { animationName: POP, animationDuration: 600, animationDelay: p.delay, animationTimingFunction: 'ease' }),
-                  ]}
-                />
-              ))}
-            </Animated.View>
-
-            <Animated.View
-              style={[
-                styles.moonSpot,
-                animate(reduceMotion, { animationName: POP, animationDuration: 900, animationDelay: 500, animationTimingFunction: MOON_SPRING }),
-              ]}>
-              <Animated.View
-                style={[
-                  styles.moonGlow,
-                  animate(reduceMotion, {
-                    animationName: FLOAT,
-                    animationDuration: 5000,
-                    animationDelay: 1400,
-                    animationTimingFunction: 'ease-in-out',
-                    animationIterationCount: 'infinite',
-                  }),
-                ]}>
-                <View style={styles.moon}>
-                  {CRATERS.map((c) => (
-                    <View
-                      key={c.left}
-                      style={[
-                        styles.crater,
-                        { left: c.left, top: c.top, width: c.size, height: c.size, borderRadius: c.size / 2, backgroundColor: `rgba(160, 170, 80, ${c.opacity})` },
-                      ]}
-                    />
-                  ))}
-                </View>
-              </Animated.View>
-            </Animated.View>
-
-            {SPARKLES.map((s) => (
-              <Animated.Text
-                key={s.delay}
-                style={[
-                  styles.sparkle,
-                  s.style,
-                  { fontSize: s.size, lineHeight: s.size * 1.2, color: s.color },
-                  animate(reduceMotion, {
-                    animationName: TWINKLE,
-                    animationDuration: s.duration,
-                    animationDelay: s.delay,
-                    animationTimingFunction: 'ease-in-out',
-                    animationIterationCount: 'infinite',
-                  }),
-                ]}>
-                ✦
-              </Animated.Text>
+        <Animated.View
+          style={[
+            { transform: [{ scale }] },
+            animate(reduceMotion, { animationName: CENTER_IN, animationDuration: 1200, animationDelay: 1000, animationTimingFunction: EASE_OUT }),
+          ]}>
+          <Animated.View
+            style={[
+              styles.card,
+              animate(reduceMotion, {
+                animationName: BREATHE,
+                animationDuration: 7000,
+                animationDelay: 2200,
+                animationTimingFunction: 'ease-in-out',
+                animationIterationCount: 'infinite',
+              }),
+            ]}>
+            {PETALS.map(({ rotate, ...spot }) => (
+              <View key={rotate + Object.keys(spot).join()} style={[styles.petal, spot, { transform: [{ rotate }] }]} />
             ))}
-          </View>
 
-          <Animated.View style={animate(reduceMotion, { animationName: FADE, animationDuration: 800, animationDelay: 1200, animationTimingFunction: 'ease' })}>
-            <Text style={styles.tagline}>a softer place for your nights.</Text>
+            <Animated.View
+              importantForAccessibility="no-hide-descendants"
+              accessibilityElementsHidden
+              style={[
+                styles.blob,
+                animate(reduceMotion, {
+                  animationName: BLOB_MORPH,
+                  animationDuration: 10000,
+                  animationTimingFunction: 'ease-in-out',
+                  animationIterationCount: 'infinite',
+                }),
+              ]}
+            />
+            <View style={styles.eyes} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+              <ClosedEye />
+              <ClosedEye />
+            </View>
+
+            <View style={styles.caption}>
+              <Text style={styles.captionTitle}>breathe out.</Text>
+              <Text style={styles.captionText}>this is your quiet corner for the nights.</Text>
+            </View>
           </Animated.View>
-        </View>
+        </Animated.View>
       </View>
     </View>
   );
 });
+
+/** A sleepy "‿": the bottom half of a lime ring. */
+function ClosedEye() {
+  return (
+    <View style={styles.eye}>
+      <View style={styles.eyeRing} />
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
   slide: {
     flex: 1,
   },
   title: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    columnGap: 10,
+    paddingHorizontal: 28,
+    gap: 10,
   },
-  titleText: {
+  hello: {
     fontFamily: BrandFonts.medium,
-    fontSize: 36,
-    lineHeight: 40,
-    letterSpacing: -1.3,
+    fontSize: 18,
+    lineHeight: 20,
     color: NightColors.text,
   },
-  titleAccent: {
-    color: BrandColors.lime,
+  welcome: {
+    fontFamily: BrandFonts.medium,
+    fontSize: 52,
+    lineHeight: 56,
+    letterSpacing: -2.4,
+    color: NightColors.text,
   },
   art: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  artInner: {
-    alignItems: 'center',
-    gap: 40,
-  },
-  orbit: {
-    width: ORBIT,
-    height: ORBIT,
-  },
-  ring: {
-    ...StyleSheet.absoluteFill,
-    borderRadius: ORBIT / 2,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: 'rgba(255, 255, 255, 0.14)',
-  },
-  planet: {
-    position: 'absolute',
-  },
-  moonSpot: {
-    position: 'absolute',
-    left: (ORBIT - MOON) / 2,
-    top: (ORBIT - MOON) / 2,
-    width: MOON,
-    height: MOON,
-  },
-  // The halo sits outside the clipped moon so it isn't cut off.
-  moonGlow: {
-    width: MOON,
-    height: MOON,
-    borderRadius: MOON / 2,
-    boxShadow: '0 0 90px 10px rgba(226, 235, 152, 0.28)',
-  },
-  moon: {
-    width: MOON,
-    height: MOON,
-    borderRadius: MOON / 2,
+  card: {
+    width: CARD_WIDTH,
+    height: CARD_HEIGHT,
+    borderRadius: 32,
     overflow: 'hidden',
     backgroundColor: BrandColors.lime,
   },
-  crater: {
+  petal: {
     position: 'absolute',
+    width: 110,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: LILAC,
   },
-  sparkle: {
+  blob: {
     position: 'absolute',
-    fontFamily: BrandFonts.regular,
+    left: (CARD_WIDTH - BLOB_WIDTH) / 2,
+    top: 70,
+    width: BLOB_WIDTH,
+    height: BLOB_HEIGHT,
+    borderRadius: BLOB_HEIGHT / 2,
+    backgroundColor: BrandColors.ink,
   },
-  tagline: {
-    fontFamily: BrandFonts.regular,
-    fontSize: 16,
-    lineHeight: 22,
+  eyes: {
+    position: 'absolute',
+    left: (CARD_WIDTH - 80) / 2,
+    top: 132,
+    width: 80,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  eye: {
+    width: 26,
+    height: 13,
+    overflow: 'hidden',
+  },
+  eyeRing: {
+    position: 'absolute',
+    left: 0,
+    top: -13,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 3,
+    borderColor: BrandColors.lime,
+  },
+  caption: {
+    position: 'absolute',
+    left: 24,
+    right: 24,
+    top: 250,
+    alignItems: 'center',
+    gap: 8,
+  },
+  captionTitle: {
+    fontFamily: BrandFonts.medium,
+    fontSize: 26,
+    lineHeight: 28,
+    letterSpacing: -0.8,
     textAlign: 'center',
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: BrandColors.ink,
+  },
+  captionText: {
+    fontFamily: BrandFonts.regular,
+    fontSize: 15,
+    lineHeight: 20,
+    textAlign: 'center',
+    color: BrandColors.ink,
   },
 });

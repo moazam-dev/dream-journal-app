@@ -5,32 +5,42 @@ import { BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { BrandColors, BrandFonts } from '@/constants/theme';
-import { DreamerSlide } from '@/components/personalizing/dreamer-slide';
+import { BrandColors, BrandFonts, NightColors } from '@/constants/theme';
 import { animate, POP, SPRING } from '@/components/personalizing/motion';
+import { PatternsSlide } from '@/components/personalizing/patterns-slide';
 import { WaysSlide } from '@/components/personalizing/ways-slide';
 import { WelcomeSlide } from '@/components/personalizing/welcome-slide';
-import { loadProfileAnswers } from '@/lib/profile';
-import { dreamerCard, loadingStatus, SLIDE_BACKGROUNDS, SLIDE_COUNT, slideAt, TOTAL_MS } from '@/utils/personalize';
+import { loadProfileName } from '@/lib/profile';
+import {
+  dreamerName,
+  loadingPercent,
+  loadingStatus,
+  PERSONALIZING_BACKGROUND,
+  SLIDE_COUNT,
+  slideAt,
+  slideProgress,
+  TOTAL_MS,
+} from '@/utils/personalize';
 
-/** How often the loading bar and its "..." update. */
-const TICK_MS = 120;
+/** How often the bars and the percent update. */
+const TICK_MS = 60;
 /** Time to enjoy "sweet dreams, …" before Home. */
 const DONE_PAUSE_MS = 1400;
-/** Height of the slide dots, the button and the space between them. */
-const FOOTER_HEIGHT = 8 + 34 + 58;
+const BUTTON_HEIGHT = 58;
+const TRACK = 'rgba(255, 255, 255, 0.16)';
 
 /**
  * "/personalizing", shown once onboarding is finished (or skipped), from the Afterdream
- * Personalizing design. While a loading bar fills, three slides play: a welcome, the ways
- * to catch a dream, and a "dreamer id" card built from their answers. Then they enter Home.
+ * Personalizing design. Story-style bars run along the top while three slides play: a
+ * welcome, the ways to catch a dream, and the patterns they'll unlock. A loading bar
+ * fills underneath, then turns into the button that takes them into Home.
  */
 export default function PersonalizingScreen() {
   const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
 
-  // Read once: the answers don't change while this screen is up.
-  const card = useMemo(() => dreamerCard(loadProfileAnswers()), []);
+  // Read once: the name doesn't change while this screen is up.
+  const name = useMemo(() => dreamerName(loadProfileName()), []);
   const [elapsed, setElapsed] = useState(0);
   const [entered, setEntered] = useState(false);
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -58,7 +68,12 @@ export default function PersonalizingScreen() {
 
   const slide = slideAt(elapsed);
   const ready = elapsed >= TOTAL_MS;
-  const progress = elapsed / TOTAL_MS;
+  const percent = loadingPercent(elapsed);
+  const barMotion = {
+    transitionProperty: 'transform',
+    transitionDuration: reduceMotion ? 0 : 150,
+    transitionTimingFunction: 'linear',
+  } as const;
 
   function handleEnter() {
     if (entered) return;
@@ -69,49 +84,30 @@ export default function PersonalizingScreen() {
   // The design's button sits 40 pt from the bottom of a phone with a 34 pt home indicator.
   const footerBottom = Math.max(insets.bottom + 6, 24);
   const slideFrame = {
-    paddingTop: insets.top + 66,
-    paddingBottom: footerBottom + FOOTER_HEIGHT + 32,
+    paddingTop: insets.top + 56,
+    paddingBottom: footerBottom + BUTTON_HEIGHT + 24,
   };
 
   return (
-    <Animated.View
-      style={[
-        styles.screen,
-        {
-          backgroundColor: SLIDE_BACKGROUNDS[slide],
-          transitionProperty: 'backgroundColor',
-          transitionDuration: reduceMotion ? 0 : 1000,
-          transitionTimingFunction: 'ease',
-        },
-      ]}>
+    <View style={styles.screen}>
       <StatusBar style="light" />
+
+      <View style={[styles.segments, { top: insets.top + 8 }]} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+        {Array.from({ length: SLIDE_COUNT }, (_, k) => (
+          <View key={k} style={styles.segment}>
+            <Animated.View style={[styles.segmentFill, { transform: [{ scaleX: slideProgress(elapsed, k) }] }, barMotion]} />
+          </View>
+        ))}
+      </View>
 
       {/* Each slide mounts fresh when it comes up, so its entrance plays. */}
       <View style={[styles.slides, slideFrame]}>
-        {slide === 0 && <WelcomeSlide name={card.name} reduceMotion={reduceMotion} />}
+        {slide === 0 && <WelcomeSlide name={name} reduceMotion={reduceMotion} />}
         {slide === 1 && <WaysSlide reduceMotion={reduceMotion} />}
-        {slide === 2 && <DreamerSlide card={card} reduceMotion={reduceMotion} />}
+        {slide === 2 && <PatternsSlide reduceMotion={reduceMotion} />}
       </View>
 
       <View style={[styles.footer, { bottom: footerBottom }]}>
-        <View style={styles.dots} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
-          {Array.from({ length: SLIDE_COUNT }, (_, k) => (
-            <Animated.View
-              key={k}
-              style={[
-                styles.dot,
-                {
-                  width: k === slide ? 26 : 8,
-                  backgroundColor: k === slide ? '#FFFFFF' : 'rgba(255, 255, 255, 0.35)',
-                  transitionProperty: ['width', 'backgroundColor'],
-                  transitionDuration: reduceMotion ? 0 : 400,
-                  transitionTimingFunction: 'ease',
-                },
-              ]}
-            />
-          ))}
-        </View>
-
         {ready ? (
           <Animated.View style={animate(reduceMotion, { animationName: POP, animationDuration: 500, animationTimingFunction: SPRING })}>
             <Pressable accessibilityRole="button" onPress={handleEnter} disabled={entered}>
@@ -126,7 +122,7 @@ export default function PersonalizingScreen() {
                       transitionTimingFunction: 'ease',
                     },
                   ]}>
-                  <Text style={styles.enterText}>{entered ? `sweet dreams, ${card.name} ✦` : 'enter afterdream →'}</Text>
+                  <Text style={styles.enterText}>{entered ? `sweet dreams, ${name} ✦` : 'enter afterdream →'}</Text>
                 </Animated.View>
               )}
             </Pressable>
@@ -136,24 +132,15 @@ export default function PersonalizingScreen() {
             style={styles.loading}
             accessible
             accessibilityRole="progressbar"
-            accessibilityLabel="Personalizing afterdream"
-            accessibilityValue={{ min: 0, max: 100, now: Math.round(progress * 100) }}>
-            <Animated.View
-              style={[
-                styles.loadingFill,
-                {
-                  transform: [{ scaleX: progress }],
-                  transitionProperty: 'transform',
-                  transitionDuration: reduceMotion ? 0 : 250,
-                  transitionTimingFunction: 'linear',
-                },
-              ]}
-            />
+            accessibilityLabel={loadingStatus(elapsed)}
+            accessibilityValue={{ min: 0, max: 100, now: percent }}>
+            <Animated.View style={[styles.loadingFill, { transform: [{ scaleX: percent / 100 }] }, barMotion]} />
             <Text style={styles.loadingText}>{loadingStatus(elapsed)}</Text>
+            <Text style={styles.loadingPercent}>{percent}%</Text>
           </View>
         )}
       </View>
-    </Animated.View>
+    </View>
   );
 }
 
@@ -167,48 +154,68 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     overflow: 'hidden',
+    backgroundColor: PERSONALIZING_BACKGROUND,
   },
-  slides: {
-    ...StyleSheet.absoluteFill,
-    paddingHorizontal: 28,
-  },
-  footer: {
+  segments: {
     position: 'absolute',
     left: 24,
     right: 24,
-    gap: 34,
-  },
-  dots: {
+    zIndex: 3,
     flexDirection: 'row',
-    justifyContent: 'center',
     gap: 6,
   },
-  dot: {
-    height: 8,
-    borderRadius: 4,
+  segment: {
+    flex: 1,
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
+    backgroundColor: TRACK,
+  },
+  segmentFill: {
+    ...StyleSheet.absoluteFill,
+    borderRadius: 2,
+    backgroundColor: NightColors.text,
+    transformOrigin: 'left',
+  },
+  slides: {
+    ...StyleSheet.absoluteFill,
+  },
+  footer: {
+    position: 'absolute',
+    left: 20,
+    right: 20,
+    height: BUTTON_HEIGHT,
   },
   loading: {
-    height: 58,
-    borderRadius: 29,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.28)',
+    height: BUTTON_HEIGHT,
+    borderRadius: BUTTON_HEIGHT / 2,
     overflow: 'hidden',
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 22,
+    backgroundColor: TRACK,
   },
   loadingFill: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: BUTTON_HEIGHT / 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
     transformOrigin: 'left',
   },
   loadingText: {
     fontFamily: BrandFonts.medium,
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.75)',
+    fontSize: 15,
+    color: NightColors.text,
+  },
+  loadingPercent: {
+    fontFamily: BrandFonts.semibold,
+    fontSize: 14,
+    fontVariant: ['tabular-nums'],
+    color: NightColors.text,
   },
   enter: {
-    height: 58,
-    borderRadius: 29,
+    height: BUTTON_HEIGHT,
+    borderRadius: BUTTON_HEIGHT / 2,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: BrandColors.lime,
