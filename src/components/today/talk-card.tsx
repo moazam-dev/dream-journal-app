@@ -30,7 +30,7 @@ type TalkCardProps = {
 };
 
 /**
- * Card 3: for dreams they only remember bits of. Afterdream asks a question, they tap an
+ * Card 2: for dreams they only remember bits of. Afterdream asks a question, they tap an
  * answer or type their own, and the AI asks the next question based on that answer. They
  * can stop whenever they like ("that's it"); after MAX_ASKS answers it stops by itself.
  * The answers are then pieced together into one dream and interpreted.
@@ -111,7 +111,7 @@ export function TalkCard({ height, active, reduceMotion, onWritingChange, onSubm
       gradient="radial-gradient(60% 30% at 70% 18%, #7fc4a0, transparent 70%), radial-gradient(70% 30% at 20% 36%, #2f8a5a, transparent 70%)"
       photo="https://picsum.photos/id/1022/600/900"
       glow={{ left: 40, top: 90, width: 280, height: 120, color: '#58b08a', opacity: 0.45, rotate: '-20deg', drift: 'out', duration: 18000 }}>
-      <CardPill step={3} stepColor="#1c1a12" label="talk it through" />
+      <CardPill step={2} stepColor="#1c1a12" label="talk it through" />
       <View style={styles.dots} accessible accessibilityLabel={`${count} of up to ${MAX_ASKS} answered`}>
         {Array.from({ length: MAX_ASKS }, (_, i) => (
           <Animated.View key={i} style={[styles.dot, { backgroundColor: i < count ? '#fff' : 'rgba(255, 255, 255, 0.3)' }, ease(reduceMotion, ['backgroundColor'])]} />

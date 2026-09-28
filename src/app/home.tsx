@@ -20,14 +20,16 @@ import { FutureCard } from '@/components/today/future-card';
 import { animate, TOAST } from '@/components/today/motion';
 import { QuoteCard } from '@/components/today/quote-card';
 import { ShareFlow } from '@/components/today/share-flow';
+import { StreakBar } from '@/components/today/streak-bar';
 import { openTab, TAB_BAR_HEIGHT, TabBar, type Tab } from '@/components/today/tab-bar';
 import { TalkCard } from '@/components/today/talk-card';
 import { WriteCard } from '@/components/today/write-card';
-import { YapCard } from '@/components/today/yap-card';
 import { BrandFonts } from '@/constants/theme';
+import { useDreams } from '@/hooks/use-dreams';
 import { loadCapsules, sealCapsule } from '@/lib/capsules';
 import { isVoiceAgentAvailable } from '@/lib/deepgram/native-audio';
 import { loadProfileName } from '@/lib/profile';
+import { nightStreak, weekDays } from '@/utils/entries';
 import {
   activeCard,
   formatClock,
@@ -41,17 +43,17 @@ import {
   type Fragment,
 } from '@/utils/today';
 
-const CARD_COUNT = 5;
+const CARD_COUNT = 4;
 const GAP = 10;
 /** Space above the first card, and below the last. */
 const EDGE = 6;
-/** In the design, 96 pt of the next card peeks out under the one in view. */
-const PEEK = 96;
+/** Just the top of the next card peeks out under the one in view. */
+const PEEK = 40;
 /** Cards never get shorter than this, even on very small phones. */
 const MIN_CARD = 520;
 const TOAST_MS = 2200;
 /** The blurred photo behind each card, in feed order (the opened screens reuse them). */
-const PHOTOS = [1015, 1036, 1022, 1016, 1018].map((id) => `https://picsum.photos/id/${id}/600/900`);
+const PHOTOS = [1015, 1022, 1016, 1018].map((id) => `https://picsum.photos/id/${id}/600/900`);
 
 /** What an opened card shows. */
 type OverlayContent =
@@ -62,8 +64,8 @@ type OverlayContent =
 type Overlay = OverlayContent & { card: number; rect: CardRect; pill: string; open: boolean };
 
 /**
- * Home ("/home"), from the Afterdream Today design: a vertical feed of five full-height
- * cards (write, yap, talk, today's quote, a note to future you) that snap into place,
+ * Home ("/home"), from the Afterdream Today design: a vertical feed of four full-height
+ * cards (yap or write, talk, today's quote, a note to future you) that snap into place,
  * above a black tab bar. A dream, the quote or the time capsule opens its card into
  * a full screen.
  */
@@ -75,6 +77,10 @@ export default function HomeScreen() {
   const [name] = useState(loadProfileName);
   const [now] = useState(() => new Date());
   const quote = useMemo(() => quoteOfDay(now), [now]);
+  // Told dreams, for the streak and this week's days (reloads whenever Home comes back into view).
+  const { dreams } = useDreams();
+  const streak = useMemo(() => nightStreak(dreams, now), [dreams, now]);
+  const week = useMemo(() => weekDays(dreams, now), [dreams, now]);
 
   const [screen, setScreen] = useState({ width: 0, height: 0 });
   // The feed's height before any keyboard shrank it, so cards keep their size while typing.
@@ -158,7 +164,7 @@ export default function HomeScreen() {
       showToast('couldn’t keep that note — try again');
       return;
     }
-    openCard(4, '⧗ time capsule', { kind: 'vault', justSealed: { lockLabel: option.label, unlockDate: longDate(opens) } });
+    openCard(3, '⧗ time capsule', { kind: 'vault', justSealed: { lockLabel: option.label, unlockDate: longDate(opens) } });
   }
 
   function toggleSave() {
@@ -194,7 +200,7 @@ export default function HomeScreen() {
           />
         );
       case 'share':
-        return <ShareFlow quote={quote} photo={PHOTOS[3]} reduceMotion={reduceMotion} bottomInset={insets.bottom} onToast={showToast} />;
+        return <ShareFlow quote={quote} photo={PHOTOS[2]} reduceMotion={reduceMotion} bottomInset={insets.bottom} onToast={showToast} />;
       case 'vault':
         return (
           <CapsuleVault
@@ -213,7 +219,10 @@ export default function HomeScreen() {
   return (
     <View style={styles.screen} onLayout={(e) => setScreen({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })}>
       <StatusBar style="light" />
-      <View style={[styles.area, { marginTop: insets.top }]} onLayout={onFeedLayout}>
+      <View style={{ marginTop: insets.top }}>
+        <StreakBar streak={streak} week={week} />
+      </View>
+      <View style={styles.area} onLayout={onFeedLayout}>
         {areaHeight > 0 && (
           <ScrollView
             style={StyleSheet.absoluteFill}
@@ -233,47 +242,41 @@ export default function HomeScreen() {
                 greeting={todayGreeting(name, now.getHours())}
                 onWritingChange={setWriting}
                 onSubmit={(text) => interpret(0, '✎ from your words', { source: 'write', text })}
+                onYap={(text, seconds) => interpret(0, `◉ ${formatClock(Math.max(1, seconds))} of yapping`, { source: 'yap', text })}
+                onSpeak={() => (isVoiceAgentAvailable() ? router.push('/voice') : showToast('speaking needs the full app build ✦'))}
               />
             </View>
             <View ref={(view) => void (cards.current[1] = view)} collapsable={false}>
-              <YapCard
+              <TalkCard
                 height={cardHeight}
                 active={active === 1}
                 reduceMotion={reduceMotion}
-                onSubmit={(text, seconds) => interpret(1, `◉ ${formatClock(Math.max(1, seconds))} of yapping`, { source: 'yap', text })}
-              />
-            </View>
-            <View ref={(view) => void (cards.current[2] = view)} collapsable={false}>
-              <TalkCard
-                height={cardHeight}
-                active={active === 2}
-                reduceMotion={reduceMotion}
                 onWritingChange={setWriting}
-                onSubmit={(fragments) => interpret(2, `✦ ${fragments.length} fragment${fragments.length > 1 ? 's' : ''}`, { source: 'talk', fragments })}
+                onSubmit={(fragments) => interpret(1, `✦ ${fragments.length} fragment${fragments.length > 1 ? 's' : ''}`, { source: 'talk', fragments })}
                 onTalkOutLoud={isVoiceAgentAvailable() ? () => router.push('/voice') : null}
               />
             </View>
-            <View ref={(view) => void (cards.current[3] = view)} collapsable={false}>
+            <View ref={(view) => void (cards.current[2] = view)} collapsable={false}>
               <QuoteCard
                 height={cardHeight}
-                active={active === 3}
+                active={active === 2}
                 reduceMotion={reduceMotion}
                 quote={quote}
                 date={shortDate(now)}
                 saved={saved}
-                onShare={() => openCard(3, 'share today’s thought', { kind: 'share' })}
+                onShare={() => openCard(2, 'share today’s thought', { kind: 'share' })}
                 onToggleSave={toggleSave}
               />
             </View>
-            <View ref={(view) => void (cards.current[4] = view)} collapsable={false}>
+            <View ref={(view) => void (cards.current[3] = view)} collapsable={false}>
               <FutureCard
                 height={cardHeight}
-                active={active === 4}
+                active={active === 3}
                 reduceMotion={reduceMotion}
                 name={displayName}
                 capsuleCount={capsules.length}
                 onSeal={seal}
-                onOpenCapsule={() => openCard(4, '⧗ time capsule', { kind: 'vault', justSealed: null })}
+                onOpenCapsule={() => openCard(3, '⧗ time capsule', { kind: 'vault', justSealed: null })}
               />
             </View>
           </ScrollView>
@@ -323,7 +326,6 @@ const styles = StyleSheet.create({
   feed: {
     paddingTop: EDGE,
     paddingBottom: EDGE,
-    paddingHorizontal: 8,
     gap: GAP,
   },
   toastRow: {

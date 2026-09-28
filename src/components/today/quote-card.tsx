@@ -17,7 +17,7 @@ type QuoteCardProps = {
   onToggleSave: () => void;
 };
 
-/** Card 4: a dream quote that changes every day, to share or keep. */
+/** Card 3: a dream quote that changes every day, to share or keep. */
 export function QuoteCard({ height, active, reduceMotion, quote, date, saved, onShare, onToggleSave }: QuoteCardProps) {
   return (
     <TodayCard

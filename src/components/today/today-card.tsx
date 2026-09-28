@@ -79,13 +79,16 @@ type CardPillProps = {
   /** Step number in the small white dot, if any. */
   step?: number;
   stepColor?: ColorValue;
+  /** Small icon before the label, instead of a step number. */
+  icon?: ReactNode;
   label: string;
 };
 
 /** The frosted label in a card's top-left corner ("1 write it down", "✦ today's thought"). */
-export function CardPill({ step, stepColor, label }: CardPillProps) {
+export function CardPill({ step, stepColor, icon, label }: CardPillProps) {
   return (
-    <View style={[styles.pill, step !== undefined && styles.pillWithStep]}>
+    <View style={[styles.pill, (step !== undefined || icon != null) && styles.pillWithStep]}>
+      {icon}
       {step !== undefined && (
         <View style={styles.step}>
           <Text style={[styles.stepText, { color: stepColor }]}>{step}</Text>
@@ -102,14 +105,15 @@ type CardHeadingProps = {
   eyebrow: string;
   title: string;
   style?: ComponentProps<typeof Animated.View>['style'];
+  titleStyle?: ComponentProps<typeof Text>['style'];
 };
 
 /** The small line and big question in the middle of a card. */
-export function CardHeading({ top, eyebrow, title, style }: CardHeadingProps) {
+export function CardHeading({ top, eyebrow, title, style, titleStyle }: CardHeadingProps) {
   return (
     <Animated.View style={[styles.heading, { top: `${top * 100}%` }, style]}>
       <Text style={styles.eyebrow}>{eyebrow}</Text>
-      <Text style={styles.title} accessibilityRole="header">
+      <Text style={[styles.title, titleStyle]} accessibilityRole="header">
         {title}
       </Text>
     </Animated.View>

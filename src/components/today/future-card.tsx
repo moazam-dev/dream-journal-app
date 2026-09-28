@@ -23,7 +23,7 @@ type FutureCardProps = {
 };
 
 /**
- * Card 5: a voice note to future you. Pick how long it stays locked, tap to start
+ * Card 4: a voice note to future you. Pick how long it stays locked, tap to start
  * recording, tap again to seal it into the time capsule (kept on the phone).
  */
 export function FutureCard({ height, active, reduceMotion, name, capsuleCount, onSeal, onOpenCapsule }: FutureCardProps) {
