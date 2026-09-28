@@ -57,7 +57,7 @@ export default function RecordDreamScreen() {
     }
 
     // 3. Open the dream. `replace` so "back" returns to Home, not this form.
-    router.replace({ pathname: '/dream/[id]', params: { id: dream.id } });
+    router.replace({ pathname: '/dream/[id]', params: { id: dream.id, tab: 'analysis' } });
   }
 
   return (

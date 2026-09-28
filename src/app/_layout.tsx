@@ -103,7 +103,8 @@ export default function RootLayout() {
         />
         <Stack.Screen name="record" options={{ title: 'New Dream' }} />
         <Stack.Screen name="history" options={{ title: 'Dream History' }} />
-        <Stack.Screen name="dream/[id]" options={{ title: 'Dream' }} />
+        {/* One dream: its transcript and analysis, with a way into Visualize. */}
+        <Stack.Screen name="dream/[id]" options={{ headerShown: false, contentStyle: { backgroundColor: '#000' } }} />
         {/* Full-screen, dark voice companion with its own header. */}
         <Stack.Screen
           name="voice"
