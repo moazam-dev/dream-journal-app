@@ -1,81 +1,205 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
-import { useReducedMotion } from 'react-native-reanimated';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import Animated, { cubicBezier, useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { BrandColors } from '@/constants/theme';
-import { Eyelids } from '@/components/welcome/eyelids';
-import { WelcomeActions } from '@/components/welcome/welcome-actions';
-import { WelcomeHero } from '@/components/welcome/welcome-hero';
+import { BrandColors, BrandFonts } from '@/constants/theme';
+import { Ghost, STAR_CENTER } from '@/components/ghost/ghost';
+import { SignInSheet } from '@/components/ghost/sign-in-sheet';
 
-/** The design was drawn for a 390 × 844 pt phone; positions scale from that. */
+/** The design was drawn for a 390 × 844 pt phone; sizes and positions scale from that. */
+const DESIGN_WIDTH = 390;
 const DESIGN_HEIGHT = 844;
-/** Where the logo starts in the design (pt from the top). */
-const HERO_TOP = 250;
-/** When the eyelids have opened and the status bar should switch to dark text. */
-const EYES_OPEN_MS = 1300;
-/** Pause on "Good morning" before moving on. */
-const GREETING_PAUSE_MS = 650;
+/** Ghost picture size, and where it sits during the intro and once settled (pt). */
+const GHOST_SIZE = 240;
+const GHOST_TOP_START = 300;
+const GHOST_TOP_END = 128;
+/** Where the "what did you dream about?" block starts (pt from the top). */
+const TITLE_TOP = 420;
+/** Radius the lime flood grows to (pt). */
+const FLOOD_RADIUS = 1100;
 
 /**
- * Welcome screen ("/", the first screen), from the Afterdream Welcome v2 design:
- * black eyelids open onto a lime screen, the logo and "afterdream" come into focus,
- * "Dreams fade. Words stay." rises in, then the buttons. The eyes blink now and then.
+ * The intro plays in steps: 1 the star pops in on black, 2 lime floods out from it,
+ * 3 the ghost rises up beside the star, 4 the ghost moves up and the title and sheet come in.
+ */
+const PHASE_TIMES_MS = [150, 1000, 1500, 3000];
+const FINAL_PHASE = 4;
+/** How long the little hop lasts after accepting the terms. */
+const HOP_MS = 380;
+/** Time for the ghost to fly off before moving on. */
+const SIGN_IN_PAUSE_MS = 1100;
+
+const Ease = {
+  flood: cubicBezier(0.65, 0, 0.35, 1),
+  move: cubicBezier(0.7, 0, 0.2, 1),
+  rise: cubicBezier(0.2, 0.8, 0.2, 1),
+};
+
+/**
+ * Welcome screen ("/", the first screen), from the Afterdream Welcome Ghost design:
+ * a lime star pops in on black, lime floods the screen, the ghost rises beside the star,
+ * then "what did you dream about?" and the sign-in sheet come in. The ghost floats,
+ * blinks and hops when the terms are accepted, then flies off on "Continue with Apple".
  */
 export default function WelcomeScreen() {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
 
-  const [eyesOpen, setEyesOpen] = useState(reduceMotion);
-  const [greeting, setGreeting] = useState(false);
+  const [phase, setPhase] = useState(reduceMotion ? FINAL_PHASE : 0);
+  const [agreed, setAgreed] = useState(false);
+  const [hop, setHop] = useState(false);
+  const [signing, setSigning] = useState(false);
+  const hopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => setEyesOpen(true), reduceMotion ? 0 : EYES_OPEN_MS);
-    return () => {
-      clearTimeout(timer);
-      if (leaveTimer.current) clearTimeout(leaveTimer.current);
-    };
+    if (reduceMotion) return;
+    const timers = PHASE_TIMES_MS.map((ms, i) => setTimeout(() => setPhase(i + 1), ms));
+    return () => timers.forEach(clearTimeout);
   }, [reduceMotion]);
 
-  function handleStart() {
-    // The design greets you before moving on to the agreement screen.
-    setGreeting(true);
+  useEffect(() => {
+    return () => {
+      if (hopTimer.current) clearTimeout(hopTimer.current);
+      if (leaveTimer.current) clearTimeout(leaveTimer.current);
+    };
+  }, []);
+
+  function handleToggle() {
+    const next = !agreed;
+    setAgreed(next);
+    setHop(next);
+    if (hopTimer.current) clearTimeout(hopTimer.current);
+    if (next) hopTimer.current = setTimeout(() => setHop(false), HOP_MS);
+  }
+
+  function handleContinue() {
+    if (!agreed || signing) return;
+    setSigning(true);
+    // There is no Sign in with Apple yet, so this goes straight to the "You're in" screen.
     // `replace` (not `push`) so "back" doesn't return here.
-    leaveTimer.current = setTimeout(() => router.replace('/agreement'), GREETING_PAUSE_MS);
+    leaveTimer.current = setTimeout(() => router.replace('/welcome-in'), SIGN_IN_PAUSE_MS);
   }
 
-  function handleExistingAccount() {
-    // There are no accounts yet, so this simply continues to your journal.
-    router.replace('/home');
-  }
+  const motion = reduceMotion ? 0 : 1;
+  const done = phase >= FINAL_PHASE;
 
-  const heroTop = Math.max(insets.top + 24, height * (HERO_TOP / DESIGN_HEIGHT));
+  // Scale the ghost and positions with the phone, so it keeps the design's proportions.
+  const scale = Math.min(width / DESIGN_WIDTH, height / DESIGN_HEIGHT);
+  const ghostSize = GHOST_SIZE * scale;
+  const ghostLeft = (width - ghostSize) / 2;
+  const ghostTopStart = GHOST_TOP_START * scale;
+  const ghostTopEnd = GHOST_TOP_END * scale;
+
+  // The lime floods out from the star, where it sits during the intro.
+  const floodRadius = FLOOD_RADIUS * scale;
+  const floodX = ghostLeft + STAR_CENTER.x * ghostSize;
+  const floodY = ghostTopStart + STAR_CENTER.y * ghostSize;
 
   return (
     <View style={styles.screen}>
-      {/* Light status bar over the closed eyelids, dark once the lime screen shows. */}
-      <StatusBar style={eyesOpen ? 'dark' : 'light'} />
+      {/* Light status bar on black, dark once the lime floods in. */}
+      <StatusBar style={phase >= 2 ? 'dark' : 'light'} />
 
-      <View style={[styles.hero, { top: heroTop }]}>
-        <WelcomeHero word="afterdream" reduceMotion={reduceMotion} />
-      </View>
+      <Animated.View
+        style={[
+          styles.flood,
+          {
+            left: floodX - floodRadius,
+            top: floodY - floodRadius,
+            width: floodRadius * 2,
+            height: floodRadius * 2,
+            borderRadius: floodRadius,
+            transform: [{ scale: phase >= 2 ? 1 : 0 }],
+            transitionProperty: 'transform',
+            transitionDuration: 1100 * motion,
+            transitionTimingFunction: Ease.flood,
+          },
+        ]}
+      />
 
-      <View style={[styles.actions, { bottom: Math.max(insets.bottom, 16) + 12 }]}>
-        <WelcomeActions
-          primaryLabel={greeting ? 'Good morning' : 'Begin'}
-          onPrimary={handleStart}
-          secondaryLabel="I have an account"
-          onSecondary={handleExistingAccount}
-          disabled={greeting}
+      <Animated.View
+        style={[
+          styles.ghost,
+          {
+            left: ghostLeft,
+            top: ghostTopEnd,
+            transform: [{ translateY: done ? 0 : ghostTopStart - ghostTopEnd }],
+            transitionProperty: 'transform',
+            transitionDuration: 1000 * motion,
+            transitionTimingFunction: Ease.move,
+          },
+        ]}>
+        <Ghost
+          size={ghostSize}
+          starIn={phase >= 1}
+          starDark={phase >= 2}
+          bodyIn={phase >= 3}
+          agreed={agreed}
+          hop={hop}
+          leaving={signing}
           reduceMotion={reduceMotion}
         />
-      </View>
+      </Animated.View>
 
-      <Eyelids width={width} height={height} blink reduceMotion={reduceMotion} />
+      <Animated.View
+        style={[
+          styles.title,
+          {
+            top: TITLE_TOP * scale,
+            opacity: done ? 1 : 0,
+            transform: [{ translateY: done ? 0 : 20 }],
+            transitionProperty: ['opacity', 'transform'],
+            transitionDuration: 700 * motion,
+            transitionDelay: 300 * motion,
+            transitionTimingFunction: ['ease', Ease.rise],
+          },
+        ]}>
+        <Text style={styles.brand}>afterdream</Text>
+        <View style={styles.headline} accessibilityRole="header">
+          <Text style={styles.headlineText}>what did you</Text>
+          <View style={styles.pill}>
+            <Text style={[styles.headlineText, styles.pillText]}>dream</Text>
+          </View>
+          <Text style={styles.headlineText}>about?</Text>
+        </View>
+      </Animated.View>
+
+      <Animated.View
+        style={[
+          styles.sheet,
+          {
+            transform: [{ translateY: done ? 0 : 420 }],
+            transitionProperty: 'transform',
+            transitionDuration: 800 * motion,
+            transitionDelay: 450 * motion,
+            transitionTimingFunction: Ease.rise,
+          },
+        ]}>
+        <SignInSheet
+          agreed={agreed}
+          onToggle={handleToggle}
+          signing={signing}
+          onContinue={handleContinue}
+          bottomPadding={Math.max(insets.bottom + 8, 24)}
+          reduceMotion={reduceMotion}
+        />
+      </Animated.View>
+
+      {/* Development builds only (never in a release): skip sign-in and onboarding. */}
+      {__DEV__ && (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.replace('/home')}
+          hitSlop={8}
+          style={({ pressed }) => [styles.devSkip, { top: insets.top + 8 }, pressed && styles.devSkipPressed]}>
+          <Text style={styles.devSkipText}>dev · skip to home</Text>
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -83,16 +207,77 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+    backgroundColor: '#000000',
+    overflow: 'hidden',
+  },
+  flood: {
+    position: 'absolute',
+    pointerEvents: 'none',
     backgroundColor: BrandColors.lime,
   },
-  hero: {
+  ghost: {
     position: 'absolute',
-    left: 0,
-    right: 0,
   },
-  actions: {
+  title: {
     position: 'absolute',
     left: 28,
     right: 28,
+    gap: 18,
+  },
+  brand: {
+    fontFamily: BrandFonts.semibold,
+    fontSize: 15,
+    letterSpacing: -0.2,
+    color: BrandColors.ink,
+  },
+  headline: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    rowGap: 4,
+    columnGap: 10,
+  },
+  headlineText: {
+    fontFamily: BrandFonts.medium,
+    fontSize: 44,
+    lineHeight: 46,
+    letterSpacing: -2,
+    color: BrandColors.ink,
+  },
+  pill: {
+    height: 50,
+    paddingHorizontal: 16,
+    paddingBottom: 4,
+    borderRadius: 26,
+    backgroundColor: BrandColors.ink,
+    justifyContent: 'center',
+  },
+  pillText: {
+    color: BrandColors.lime,
+  },
+  sheet: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  devSkip: {
+    position: 'absolute',
+    right: 16,
+    zIndex: 10,
+    height: 32,
+    paddingHorizontal: 14,
+    borderRadius: 16,
+    justifyContent: 'center',
+    backgroundColor: 'rgba(17,17,17,0.85)',
+  },
+  devSkipPressed: {
+    opacity: 0.7,
+  },
+  devSkipText: {
+    fontFamily: BrandFonts.medium,
+    fontSize: 12,
+    lineHeight: 15,
+    color: '#fff',
   },
 });
