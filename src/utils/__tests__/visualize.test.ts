@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import type { Dream } from '../../types/dream.ts';
-import { cardMeta, dreamMood, pickPaintings, unpaintedDreams, visualizeIntro } from '../visualize.ts';
+import { cardMeta, dreamMood, pickPaintings, unpaintedDreams } from '../visualize.ts';
 
 type Paint = Pick<Dream, 'image_status' | 'image_url' | 'analysis_status'>;
 
@@ -27,7 +27,6 @@ function dream(id: string, told: Date, paint: Partial<Paint> = {}): Dream {
 }
 
 const painted = { image_status: 'completed', image_url: 'https://example.com/x.png' } as const;
-const now = new Date(2026, 8, 27, 9);
 
 describe('dreamMood', () => {
   it('prefers the dreamer’s own mood, lower-cased', () => {
@@ -77,26 +76,6 @@ describe('unpaintedDreams', () => {
       unpaintedDreams([c, d, a, b, e]).map((x) => x.id),
       ['e', 'c', 'd']
     );
-  });
-});
-
-describe('visualizeIntro', () => {
-  it('counts what was painted this week', () => {
-    const week = [dream('a', new Date(2026, 8, 27), painted), dream('b', new Date(2026, 8, 21), painted)];
-    const old = dream('c', new Date(2026, 8, 1), painted);
-    assert.equal(
-      visualizeIntro([...week, old], now),
-      '2 dreams painted from your own words. swipe to wander back through them, or tap + to paint a new one.'
-    );
-    assert.equal(visualizeIntro(week.slice(0, 1), now).startsWith('1 dream painted'), true);
-  });
-
-  it('still invites a look back when nothing is new, and a first dream when nothing is painted', () => {
-    assert.equal(
-      visualizeIntro([dream('c', new Date(2026, 8, 1), painted)], now),
-      'nothing new painted this week. swipe to wander back, or tap + to paint a new one.'
-    );
-    assert.equal(visualizeIntro([], now), 'nothing painted yet. tap + and tell afterdream a dream — it’ll be painted here.');
   });
 });
 

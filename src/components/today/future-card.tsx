@@ -7,7 +7,9 @@ import { useCapsuleRecorder } from '@/hooks/use-capsule-recorder';
 import { capsuleLine, formatClock, LOCK_OPTIONS } from '@/utils/today';
 
 import { ease } from './motion';
-import { CardHeading, CardPill, TodayCard } from './today-card';
+import { CARD_BACKGROUNDS } from './backgrounds';
+import { LockIcon } from './icons';
+import { CardHeading, TodayCard } from './today-card';
 
 const RED = '#e05a5a';
 
@@ -46,11 +48,20 @@ export function FutureCard({ height, active, reduceMotion, name, capsuleCount, o
       active={active}
       reduceMotion={reduceMotion}
       label="note to future you"
-      base="#2d3d25"
-      gradient="radial-gradient(60% 35% at 72% 20%, #e3d7a6, transparent 70%), radial-gradient(70% 40% at 30% 40%, #8ea56a, transparent 70%)"
-      photo="https://picsum.photos/id/1018/600/900"
-      glow={{ left: 60, top: 60, width: 260, height: 200, color: '#f0e6b8', opacity: 0.4, drift: 'out', duration: 17000 }}>
-      <CardPill label="⧗ note to future you" />
+      base="#04090b"
+      gradient="radial-gradient(80% 35% at 50% 25%, #14503f, transparent 70%)"
+      photo={CARD_BACKGROUNDS[3]}
+      glow={{ left: 60, top: 60, width: 260, height: 200, color: '#84ffae', opacity: 0.12, drift: 'out', duration: 17000 }}>
+      {/* The sealed messages, in the corner. */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={capsuleLine(capsuleCount)}
+        onPress={onOpenCapsule}
+        hitSlop={10}
+        style={({ pressed }) => [styles.sealed, pressed && styles.sealedPressed]}>
+        <LockIcon size={14} />
+        <Text style={styles.sealedText}>{capsuleCount > 0 ? `sealed · ${capsuleCount}` : 'sealed'}</Text>
+      </Pressable>
       <CardHeading top={130 / 610} eyebrow="hopes, fears, what you're hoping for." title={`record a message for future ${name}.`} />
 
       <View style={styles.bottom}>
@@ -82,6 +93,8 @@ export function FutureCard({ height, active, reduceMotion, name, capsuleCount, o
           onPress={toggle}
           style={({ pressed }) => pressed && styles.pressed}>
           <Animated.View style={[styles.hold, { backgroundColor: holding ? '#fff' : 'rgba(255, 255, 255, 0.2)' }, ease(reduceMotion, ['backgroundColor'])]}>
+            {/* Same width as the dot on the right, so the words sit in the true middle. */}
+            <View style={styles.dotSpace} />
             <Text style={[styles.holdText, { color: holding ? '#111' : '#fff' }]}>
               {holding ? `recording · ${formatClock(note.seconds)} · tap to seal` : 'hold a thought for later'}
             </Text>
@@ -97,14 +110,10 @@ export function FutureCard({ height, active, reduceMotion, name, capsuleCount, o
           </Animated.View>
         </Pressable>
 
-        {note.error ? (
-          <Text style={[styles.small, styles.capsules]} accessibilityLiveRegion="polite">
+        {note.error && (
+          <Text style={[styles.small, styles.error]} accessibilityLiveRegion="polite">
             {note.error}
           </Text>
-        ) : (
-          <Pressable accessibilityRole="link" onPress={onOpenCapsule} hitSlop={8}>
-            <Text style={[styles.small, styles.capsules, styles.link]}>{capsuleLine(capsuleCount)}</Text>
-          </Pressable>
         )}
       </View>
     </TodayCard>
@@ -122,8 +131,26 @@ const styles = StyleSheet.create({
   lockGroup: {
     gap: 8,
   },
+  sealed: {
+    position: 'absolute',
+    top: 30,
+    right: 24,
+    zIndex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  sealedPressed: {
+    opacity: 0.6,
+  },
+  sealedText: {
+    fontFamily: BrandFonts.medium,
+    fontSize: 13,
+    lineHeight: 16,
+    color: '#fff',
+  },
   small: {
-    paddingLeft: 6,
+    textAlign: 'center',
     fontFamily: BrandFonts.medium,
     fontSize: 13,
     lineHeight: 16,
@@ -159,12 +186,15 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    paddingLeft: 22,
-    paddingRight: 8,
+    gap: 10,
+    paddingHorizontal: 8,
+  },
+  dotSpace: {
+    width: 48,
   },
   holdText: {
     flex: 1,
+    textAlign: 'center',
     fontFamily: BrandFonts.semibold,
     fontSize: 16,
     lineHeight: 20,
@@ -182,11 +212,8 @@ const styles = StyleSheet.create({
   pressed: {
     transform: [{ scale: 0.98 }],
   },
-  capsules: {
+  error: {
     fontFamily: BrandFonts.regular,
     lineHeight: 17,
-  },
-  link: {
-    textDecorationLine: 'underline',
   },
 });

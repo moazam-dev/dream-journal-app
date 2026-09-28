@@ -20,8 +20,8 @@ type CardOverlayProps = {
   /** False while closing: the overlay shrinks back into its card. */
   open: boolean;
   reduceMotion: boolean;
-  /** Blurred photo behind the screen; without one the screen is plain dark. */
-  photo?: string;
+  /** Card's background picture (`require(...)`), softly blurred; without one the screen is plain dark. */
+  photo?: number;
   pill: string;
   /** Replaces the pill on the right of the top bar (e.g. tabs). */
   headerRight?: ReactNode;
@@ -62,7 +62,7 @@ export function CardOverlay({ from, screen, open, reduceMotion, photo, pill, hea
       <View style={[styles.inner, screen]}>
         {photo ? (
           <>
-            <Image source={{ uri: photo }} style={styles.photo} contentFit="cover" blurRadius={12} />
+            <Image source={photo} style={styles.photo} contentFit="cover" blurRadius={12} />
             <View style={styles.shade} />
           </>
         ) : (

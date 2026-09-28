@@ -9,7 +9,8 @@ import { getErrorMessage } from '@/utils/errors';
 import { FIRST_ASK, fragmentsHint, MAX_ASKS, type Ask, type Fragment } from '@/utils/today';
 
 import { animate, BUBBLE_IN, ease } from './motion';
-import { CardHeading, CardPill, glass, TodayCard } from './today-card';
+import { CARD_BACKGROUNDS } from './backgrounds';
+import { CardHeading, glass, TodayCard } from './today-card';
 
 const DOT_BLINK = {
   '0%': { opacity: 0.3 },
@@ -107,11 +108,10 @@ export function TalkCard({ height, active, reduceMotion, onWritingChange, onSubm
       active={active}
       reduceMotion={reduceMotion}
       label="talk it through"
-      base="#1c1a12"
-      gradient="radial-gradient(60% 30% at 70% 18%, #7fc4a0, transparent 70%), radial-gradient(70% 30% at 20% 36%, #2f8a5a, transparent 70%)"
-      photo="https://picsum.photos/id/1022/600/900"
-      glow={{ left: 40, top: 90, width: 280, height: 120, color: '#58b08a', opacity: 0.45, rotate: '-20deg', drift: 'out', duration: 18000 }}>
-      <CardPill step={2} stepColor="#1c1a12" label="talk it through" />
+      base="#0a0616"
+      gradient="radial-gradient(80% 35% at 50% 25%, #4a1f6b, transparent 70%)"
+      photo={CARD_BACKGROUNDS[1]}
+      glow={{ left: 40, top: 90, width: 280, height: 120, color: '#c46bff', opacity: 0.14, rotate: '-20deg', drift: 'out', duration: 18000 }}>
       <View style={styles.dots} accessible accessibilityLabel={`${count} of up to ${MAX_ASKS} answered`}>
         {Array.from({ length: MAX_ASKS }, (_, i) => (
           <Animated.View key={i} style={[styles.dot, { backgroundColor: i < count ? '#fff' : 'rgba(255, 255, 255, 0.3)' }, ease(reduceMotion, ['backgroundColor'])]} />
@@ -235,9 +235,11 @@ function Thinking({ reduceMotion }: { reduceMotion: boolean }) {
 const styles = StyleSheet.create({
   dots: {
     position: 'absolute',
-    right: 22,
-    top: 40,
+    left: 0,
+    right: 0,
+    top: 36,
     flexDirection: 'row',
+    justifyContent: 'center',
     gap: 5,
   },
   dot: {
@@ -252,14 +254,15 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   answer: {
-    alignSelf: 'flex-end',
+    alignSelf: 'center',
+    textAlign: 'center',
     maxWidth: '78%',
     paddingVertical: 9,
     paddingHorizontal: 14,
     overflow: 'hidden',
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
-    borderBottomRightRadius: 6,
+    borderBottomRightRadius: 18,
     borderBottomLeftRadius: 18,
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
     fontFamily: BrandFonts.medium,
@@ -268,7 +271,8 @@ const styles = StyleSheet.create({
     color: '#111',
   },
   question: {
-    alignSelf: 'flex-start',
+    alignSelf: 'center',
+    textAlign: 'center',
     maxWidth: '86%',
     paddingVertical: 12,
     paddingHorizontal: 16,
@@ -276,17 +280,18 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     borderBottomRightRadius: 20,
-    borderBottomLeftRadius: 6,
+    borderBottomLeftRadius: 20,
     fontFamily: BrandFonts.regular,
     fontSize: 16,
     lineHeight: 21,
     color: '#fff',
   },
   errorRow: {
+    alignItems: 'center',
     gap: 8,
   },
   thinking: {
-    alignSelf: 'flex-start',
+    alignSelf: 'center',
     height: 44,
     paddingHorizontal: 18,
     flexDirection: 'row',
@@ -295,7 +300,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     borderBottomRightRadius: 20,
-    borderBottomLeftRadius: 6,
+    borderBottomLeftRadius: 20,
   },
   thinkingDot: {
     width: 7,
@@ -306,11 +311,11 @@ const styles = StyleSheet.create({
   replies: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
     gap: 6,
   },
   chip: {
-    alignSelf: 'flex-end',
+    alignSelf: 'center',
     height: 38,
     paddingHorizontal: 14,
     borderRadius: 19,
@@ -367,13 +372,15 @@ const styles = StyleSheet.create({
     marginTop: 4,
     minHeight: 40,
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 10,
+    justifyContent: 'center',
+    columnGap: 12,
+    rowGap: 6,
   },
   hint: {
     flexShrink: 1,
-    paddingLeft: 4,
+    textAlign: 'center',
     fontFamily: BrandFonts.medium,
     fontSize: 13,
     lineHeight: 16,

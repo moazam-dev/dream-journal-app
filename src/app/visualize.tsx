@@ -6,7 +6,7 @@ import Animated, { useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BrandBar } from '@/components/today/brand-bar';
-import { animate, FADE, TOAST } from '@/components/today/motion';
+import { animate, TOAST } from '@/components/today/motion';
 import { openTab, TAB_BAR_HEIGHT, TabBar, type Tab } from '@/components/today/tab-bar';
 import { AddMenu } from '@/components/visualize/add-menu';
 import { OldDreamSheet } from '@/components/visualize/old-dream-sheet';
@@ -17,7 +17,7 @@ import { analyzeDream } from '@/services/dreams';
 import type { Dream } from '@/types/dream';
 import { getErrorMessage } from '@/utils/errors';
 import { currentStreak } from '@/utils/garden';
-import { pickPaintings, unpaintedDreams, visualizeIntro } from '@/utils/visualize';
+import { pickPaintings, unpaintedDreams } from '@/utils/visualize';
 
 const TOAST_MS = 2200;
 /** A column, the gap either side of the divider, and the divider itself. */
@@ -135,7 +135,7 @@ export default function VisualizeScreen() {
     if (!openTab(tab, 'visualize')) showToast(`${tab} is coming soon ✦`);
   }
 
-  const intro = loading && loaded.length === 0 ? null : error && loaded.length === 0 ? error : visualizeIntro(paintings, now);
+  const failed = !!error && loaded.length === 0;
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
@@ -143,18 +143,14 @@ export default function VisualizeScreen() {
       <BrandBar title="visualize" streak={streak} />
 
       <View style={[styles.intro, { marginTop: 48 * squeeze }]}>
-        <Text style={styles.introTitle}>{error && loaded.length === 0 ? 'couldn’t reach your dreams.' : 'this week'}</Text>
-        {intro === null ? (
-          <Animated.Text style={[styles.introText, animate(reduceMotion, { animationName: FADE, animationDuration: 600, animationDelay: 300 })]}>
-            gathering your paintings…
-          </Animated.Text>
-        ) : (
-          <Text style={styles.introText}>{intro}</Text>
-        )}
-        {error && loaded.length === 0 && (
-          <Pressable accessibilityRole="button" onPress={reload} style={({ pressed }) => [styles.retry, pressed && styles.pressed]}>
-            <Text style={styles.retryText}>try again</Text>
-          </Pressable>
+        <Text style={styles.introTitle}>{failed ? 'couldn’t reach your dreams.' : 'this week'}</Text>
+        {failed && (
+          <>
+            <Text style={styles.introText}>{error}</Text>
+            <Pressable accessibilityRole="button" onPress={reload} style={({ pressed }) => [styles.retry, pressed && styles.pressed]}>
+              <Text style={styles.retryText}>try again</Text>
+            </Pressable>
+          </>
         )}
       </View>
 
@@ -231,9 +227,9 @@ const styles = StyleSheet.create({
   },
   introTitle: {
     fontFamily: BrandFonts.regular,
-    fontSize: 28,
-    lineHeight: 30,
-    letterSpacing: -0.6,
+    fontSize: 40,
+    lineHeight: 44,
+    letterSpacing: -1,
     color: CREAM,
   },
   introText: {

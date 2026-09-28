@@ -2,8 +2,6 @@ import type { Dream } from '@/types/dream';
 
 import { shortDate } from './today.ts';
 
-const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-
 function isPainted(dream: Pick<Dream, 'image_status' | 'image_url'>): boolean {
   return dream.image_status === 'completed' && !!dream.image_url;
 }
@@ -33,15 +31,6 @@ export function unpaintedDreams(dreams: readonly Dream[]): Dream[] {
   return dreams
     .filter((dream) => !isPainted(dream) && dream.image_status !== 'generating')
     .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
-}
-
-/** The line under "this week". */
-export function visualizeIntro(paintings: readonly Dream[], now: Date): string {
-  const painted = paintings.filter(isPainted);
-  if (painted.length === 0) return 'nothing painted yet. tap + and tell afterdream a dream — it’ll be painted here.';
-  const week = painted.filter((dream) => now.getTime() - new Date(dream.created_at).getTime() < WEEK_MS).length;
-  if (week === 0) return 'nothing new painted this week. swipe to wander back, or tap + to paint a new one.';
-  return `${week} dream${week === 1 ? '' : 's'} painted from your own words. swipe to wander back through them, or tap + to paint a new one.`;
 }
 
 /** Above a painting: "sep 27 • wonder". */

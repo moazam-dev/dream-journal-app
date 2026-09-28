@@ -24,10 +24,11 @@ type TodayCardProps = {
   height: number;
   active: boolean;
   reduceMotion: boolean;
-  /** Layered radial gradients (CSS syntax), shown while the photo loads or if it can't. */
+  /** Layered radial gradients (CSS syntax), shown while the picture loads or if it can't. */
   gradient: string;
   base: ColorValue;
-  photo: string;
+  /** Bundled background picture (`require(...)`), from CARD_BACKGROUNDS. */
+  photo: number;
   glow: Glow;
   label: string;
   children: ReactNode;
@@ -35,7 +36,7 @@ type TodayCardProps = {
 };
 
 /**
- * One full-height card on the Today feed: a blurred, slowly zooming photo over a gradient,
+ * One full-height card on the Today feed: a slowly zooming northern-lights picture over a gradient,
  * a drifting glow, and whatever the card holds. The card in view is full size; the others
  * shrink a little and dim.
  */
@@ -51,7 +52,7 @@ export function TodayCard({ height, active, reduceMotion, gradient, base, photo,
         !reduceMotion && { transitionProperty: ['opacity', 'transform'], transitionDuration: 500, transitionTimingFunction: EASE_OUT },
       ]}>
       <Animated.View style={[styles.photo, loop(reduceMotion, ZOOM, 24000)]}>
-        <Image source={{ uri: photo }} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={26} transition={600} />
+        <Image source={photo} style={StyleSheet.absoluteFill} contentFit="cover" transition={300} />
       </Animated.View>
       <View style={styles.shade} />
       <Animated.View
@@ -75,30 +76,6 @@ export function TodayCard({ height, active, reduceMotion, gradient, base, photo,
   );
 }
 
-type CardPillProps = {
-  /** Step number in the small white dot, if any. */
-  step?: number;
-  stepColor?: ColorValue;
-  /** Small icon before the label, instead of a step number. */
-  icon?: ReactNode;
-  label: string;
-};
-
-/** The frosted label in a card's top-left corner ("1 write it down", "✦ today's thought"). */
-export function CardPill({ step, stepColor, icon, label }: CardPillProps) {
-  return (
-    <View style={[styles.pill, (step !== undefined || icon != null) && styles.pillWithStep]}>
-      {icon}
-      {step !== undefined && (
-        <View style={styles.step}>
-          <Text style={[styles.stepText, { color: stepColor }]}>{step}</Text>
-        </View>
-      )}
-      <Text style={styles.pillText}>{label}</Text>
-    </View>
-  );
-}
-
 type CardHeadingProps = {
   /** Where the heading starts, as a share of the card's height. */
   top: number;
@@ -108,7 +85,7 @@ type CardHeadingProps = {
   titleStyle?: ComponentProps<typeof Text>['style'];
 };
 
-/** The small line and big question in the middle of a card. */
+/** The small line and big question in the middle of a card, centred. */
 export function CardHeading({ top, eyebrow, title, style, titleStyle }: CardHeadingProps) {
   return (
     <Animated.View style={[styles.heading, { top: `${top * 100}%` }, style]}>
@@ -147,40 +124,6 @@ const styles = StyleSheet.create({
   glow: {
     position: 'absolute',
   },
-  pill: {
-    position: 'absolute',
-    left: 22,
-    top: 24,
-    height: 40,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.14)',
-  },
-  pillWithStep: {
-    paddingLeft: 12,
-  },
-  step: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepText: {
-    fontFamily: BrandFonts.semibold,
-    fontSize: 11,
-    lineHeight: 13,
-  },
-  pillText: {
-    fontFamily: BrandFonts.medium,
-    fontSize: 14,
-    lineHeight: 17,
-    color: '#fff',
-  },
   heading: {
     position: 'absolute',
     left: 24,
@@ -191,6 +134,7 @@ const styles = StyleSheet.create({
     fontFamily: BrandFonts.regular,
     fontSize: 16,
     lineHeight: 19,
+    textAlign: 'center',
     color: '#fff',
   },
   title: {
@@ -198,6 +142,7 @@ const styles = StyleSheet.create({
     fontSize: 36,
     lineHeight: 39,
     letterSpacing: -1.3,
+    textAlign: 'center',
     color: '#fff',
   },
 });

@@ -1,93 +1,129 @@
 import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
-import { Linking, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import * as Sharing from 'expo-sharing';
+import { useRef, useState, type ReactNode } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
+import { captureRef } from 'react-native-view-shot';
 
-import { BrandFonts } from '@/constants/theme';
+import { BrandColors, BrandFonts } from '@/constants/theme';
 import { quoteShareText, type Quote } from '@/utils/today';
 
+import { CopyIcon, ShareIcon } from './icons';
 import { animate, EASE_OUT, rise, RISE } from './motion';
 
 const LOGO = require('@/assets/images/afterdream-logo.png');
 
+/** The story picture is 9:16, like a WhatsApp status or an Instagram story. */
+const STORY_WIDTH = 252;
+const STORY_HEIGHT = 448;
+
 type ShareFlowProps = {
   quote: Quote;
-  photo: string;
+  /** Today, like "sep 27". */
+  date: string;
+  /** The quote card's background picture. */
+  photo: number;
   reduceMotion: boolean;
   bottomInset: number;
   onToast: (text: string) => void;
 };
 
-/** "share today's thought": a story-sized preview of the quote, and where to send it. */
-export function ShareFlow({ quote, photo, reduceMotion, bottomInset, onToast }: ShareFlowProps) {
-  const message = quoteShareText(quote);
+/**
+ * "share today's thought": a story-sized picture of the quote with the Afterdream logo.
+ * "share" turns it into a PNG and opens the share sheet (WhatsApp, status, stories…);
+ * "copy" puts the quote on the clipboard as text.
+ */
+export function ShareFlow({ quote, date, photo, reduceMotion, bottomInset, onToast }: ShareFlowProps) {
+  const story = useRef<View>(null);
+  const [busy, setBusy] = useState(false);
 
-  async function shareSheet() {
+  async function shareImage() {
+    if (busy) return;
+    setBusy(true);
     try {
-      await Share.share({ message });
+      if (!(await Sharing.isAvailableAsync())) {
+        onToast('sharing isn’t available here');
+        return;
+      }
+      const uri = await captureRef(story, { format: 'png', quality: 1, result: 'tmpfile' });
+      await Sharing.shareAsync(uri, { mimeType: 'image/png', UTI: 'public.png', dialogTitle: 'share today’s thought' });
     } catch {
-      onToast('couldn’t open sharing');
-    }
-  }
-
-  async function sendMessage() {
-    // iOS wants "sms:&body=", Android "sms:?body=".
-    const url = `sms:${Platform.OS === 'ios' ? '&' : '?'}body=${encodeURIComponent(message)}`;
-    try {
-      await Linking.openURL(url);
-    } catch {
-      onToast('couldn’t open messages');
+      onToast('couldn’t make the picture');
+    } finally {
+      setBusy(false);
     }
   }
 
   async function copy() {
     try {
-      await Clipboard.setStringAsync(message);
+      await Clipboard.setStringAsync(quoteShareText(quote));
       onToast('copied ✦');
     } catch {
       onToast('couldn’t copy it');
     }
   }
 
-  const targets = [
-    { icon: '↗', label: 'share', go: shareSheet },
-    { icon: '✉', label: 'message', go: sendMessage },
-    { icon: '⧉', label: 'copy', go: copy },
-  ];
-
   return (
     <View style={[styles.flow, { paddingBottom: bottomInset + 40 }]}>
       <Animated.View
-        style={[
-          styles.story,
-          animate(reduceMotion, { animationName: RISE, animationDuration: 600, animationDelay: 200, animationTimingFunction: EASE_OUT }),
-        ]}
-        accessible
-        accessibilityLabel={`${quote.text} — ${quote.by}`}>
-        <Image source={{ uri: photo }} style={styles.storyPhoto} contentFit="cover" blurRadius={18} />
-        <View style={styles.storyShade} />
-        <View style={styles.storyText}>
-          <Text style={styles.mark}>“</Text>
-          <Text style={styles.quote}>{quote.text}</Text>
-          <Text style={styles.by}>— {quote.by}</Text>
-        </View>
-        <View style={styles.brand}>
-          <Image source={LOGO} style={styles.logo} contentFit="contain" tintColor="#fff" />
-          <Text style={styles.brandText}>afterdream</Text>
+        style={[styles.frame, animate(reduceMotion, { animationName: RISE, animationDuration: 600, animationDelay: 200, animationTimingFunction: EASE_OUT })]}>
+        <View style={styles.clip}>
+          {/* Everything inside this view is what ends up in the shared picture (square corners). */}
+          <View ref={story} collapsable={false} style={styles.story} accessible accessibilityLabel={`${quote.text} — ${quote.by}`}>
+            <Image source={photo} style={StyleSheet.absoluteFill} contentFit="cover" />
+            <View style={styles.storyShade} />
+
+            <View style={styles.brand}>
+              <Image source={LOGO} style={styles.logo} contentFit="contain" tintColor={BrandColors.lime} />
+              <Text style={styles.brandText}>afterdream</Text>
+            </View>
+
+            <View style={styles.storyText}>
+              <Text style={styles.mark}>“</Text>
+              <Text style={styles.quote} numberOfLines={8} adjustsFontSizeToFit minimumFontScale={0.7}>
+                {quote.text}
+              </Text>
+              <Text style={styles.by}>— {quote.by}</Text>
+            </View>
+
+            <Text style={styles.footer}>today’s thought · {date}</Text>
+          </View>
         </View>
       </Animated.View>
 
       <Animated.View style={[styles.targets, rise(reduceMotion, 400)]}>
-        {targets.map(({ icon, label, go }) => (
-          <Pressable key={label} accessibilityRole="button" accessibilityLabel={label} onPress={go} style={({ pressed }) => [styles.target, pressed && styles.pressed]}>
-            <View style={styles.targetIcon}>
-              <Text style={styles.targetGlyph}>{icon}</Text>
-            </View>
-            <Text style={styles.targetLabel}>{label}</Text>
-          </Pressable>
-        ))}
+        <Target label={busy ? 'making it…' : 'share'} onPress={shareImage} disabled={busy}>
+          <ShareIcon size={22} />
+        </Target>
+        <Target label="copy text" onPress={copy}>
+          <CopyIcon size={22} />
+        </Target>
       </Animated.View>
     </View>
+  );
+}
+
+type TargetProps = {
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+  children: ReactNode;
+};
+
+/** Round icon button with a label under it. */
+function Target({ label, onPress, disabled, children }: TargetProps) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: !!disabled, busy: !!disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [styles.target, pressed && styles.pressed, disabled && styles.dim]}>
+      <View style={styles.targetIcon}>{children}</View>
+      <Text style={styles.targetLabel}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -99,20 +135,21 @@ const styles = StyleSheet.create({
     gap: 26,
     paddingHorizontal: 20,
   },
-  story: {
-    width: 236,
-    height: 420,
+  frame: {
+    borderRadius: 28,
+    borderCurve: 'continuous',
+    boxShadow: '0 30px 60px rgba(0, 0, 0, 0.45)',
+  },
+  clip: {
     borderRadius: 28,
     borderCurve: 'continuous',
     overflow: 'hidden',
-    boxShadow: '0 30px 60px rgba(0, 0, 0, 0.45)',
   },
-  storyPhoto: {
-    position: 'absolute',
-    top: -30,
-    left: -30,
-    right: -30,
-    bottom: -30,
+  story: {
+    width: STORY_WIDTH,
+    height: STORY_HEIGHT,
+    alignItems: 'center',
+    backgroundColor: '#050818',
   },
   storyShade: {
     position: 'absolute',
@@ -120,57 +157,66 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.28)',
+    experimental_backgroundImage: 'linear-gradient(180deg, rgba(0,0,0,0.25), rgba(0,0,0,0.35) 50%, rgba(0,0,0,0.5))',
+  },
+  brand: {
+    marginTop: 34,
+    alignItems: 'center',
+    gap: 8,
+  },
+  logo: {
+    width: 40,
+    height: 40,
+  },
+  brandText: {
+    fontFamily: BrandFonts.semibold,
+    fontSize: 15,
+    lineHeight: 18,
+    letterSpacing: 0.3,
+    color: '#fff',
   },
   storyText: {
-    position: 'absolute',
-    left: 20,
-    right: 20,
-    top: 60,
-    gap: 14,
+    flex: 1,
+    paddingHorizontal: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
   },
   mark: {
     height: 29,
     fontFamily: BrandFonts.medium,
     fontSize: 48,
     lineHeight: 58,
+    textAlign: 'center',
     color: 'rgba(255, 255, 255, 0.65)',
   },
   quote: {
     fontFamily: BrandFonts.medium,
-    fontSize: 21,
-    lineHeight: 24,
+    fontSize: 22,
+    lineHeight: 26,
     letterSpacing: -0.6,
+    textAlign: 'center',
     color: '#fff',
   },
   by: {
     fontFamily: BrandFonts.regular,
     fontSize: 12,
     lineHeight: 15,
+    textAlign: 'center',
     color: '#fff',
   },
-  brand: {
-    position: 'absolute',
-    left: 20,
-    right: 20,
-    bottom: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  logo: {
-    width: 18,
-    height: 18,
-  },
-  brandText: {
+  footer: {
+    marginBottom: 26,
     fontFamily: BrandFonts.medium,
-    fontSize: 12,
-    lineHeight: 15,
-    color: '#fff',
+    fontSize: 11,
+    lineHeight: 14,
+    letterSpacing: 0.3,
+    textAlign: 'center',
+    color: 'rgba(255, 255, 255, 0.75)',
   },
   targets: {
     flexDirection: 'row',
-    gap: 18,
+    gap: 28,
   },
   target: {
     alignItems: 'center',
@@ -184,12 +230,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  targetGlyph: {
-    fontFamily: BrandFonts.medium,
-    fontSize: 20,
-    lineHeight: 24,
-    color: '#fff',
-  },
   targetLabel: {
     fontFamily: BrandFonts.medium,
     fontSize: 12,
@@ -198,5 +238,8 @@ const styles = StyleSheet.create({
   },
   pressed: {
     transform: [{ scale: 0.95 }],
+  },
+  dim: {
+    opacity: 0.6,
   },
 });

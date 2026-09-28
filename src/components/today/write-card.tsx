@@ -9,7 +9,8 @@ import { useKeyboardOverlap } from '@/hooks/use-keyboard-overlap';
 import { formatClock, wordCount, writeHint } from '@/utils/today';
 
 import { ease, EASE_OUT, PULSE, rise } from './motion';
-import { CardHeading, CardPill, TodayCard } from './today-card';
+import { CARD_BACKGROUNDS } from './backgrounds';
+import { CardHeading, TodayCard } from './today-card';
 
 /** Box and heading positions from the design (a 610 pt card). */
 const BOX_CLOSED = 124;
@@ -104,13 +105,12 @@ export function WriteCard({ height, active, reduceMotion, greeting, onWritingCha
       active={active}
       reduceMotion={reduceMotion}
       label="tell your dream"
-      base="#6f8290"
-      gradient="radial-gradient(70% 45% at 75% 78%, #d8a585, transparent 70%), radial-gradient(90% 60% at 40% 10%, #5e7383, transparent 70%)"
-      photo="https://picsum.photos/id/1015/600/900"
-      glow={{ left: 160, top: 330, width: 260, height: 260, color: '#b8805e', opacity: 0.3, drift: 'out', duration: 14000 }}>
+      base="#060a16"
+      gradient="radial-gradient(80% 35% at 50% 25%, #16543f, transparent 70%)"
+      photo={CARD_BACKGROUNDS[0]}
+      glow={{ left: 160, top: 330, width: 260, height: 260, color: '#46ffb4', opacity: 0.12, drift: 'out', duration: 14000 }}>
       {/* Tapping the card around the box puts the keyboard away. */}
       <Pressable style={StyleSheet.absoluteFill} onPress={Keyboard.dismiss} accessible={false} />
-      <CardPill icon={<EyeIcon />} label="your dream" />
       <CardHeading
         top={0}
         eyebrow={greeting}
@@ -264,16 +264,6 @@ function PenIcon() {
         d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
         fill="#fff"
       />
-    </Svg>
-  );
-}
-
-/** Open eye, for the card's label. */
-function EyeIcon() {
-  return (
-    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-      <Path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z" stroke="#fff" strokeWidth={2} strokeLinejoin="round" />
-      <Path d="M12 9.2a2.8 2.8 0 1 1 0 5.6 2.8 2.8 0 0 1 0-5.6z" fill="#fff" />
     </Svg>
   );
 }

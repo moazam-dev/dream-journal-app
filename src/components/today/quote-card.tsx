@@ -3,7 +3,9 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { BrandFonts } from '@/constants/theme';
 import type { Quote } from '@/utils/today';
 
-import { CardPill, glass, TodayCard } from './today-card';
+import { CARD_BACKGROUNDS } from './backgrounds';
+import { ShareIcon } from './icons';
+import { glass, TodayCard } from './today-card';
 
 type QuoteCardProps = {
   height: number;
@@ -25,23 +27,25 @@ export function QuoteCard({ height, active, reduceMotion, quote, date, saved, on
       active={active}
       reduceMotion={reduceMotion}
       label="today's thought"
-      base="#8a3c16"
-      gradient="radial-gradient(70% 40% at 30% 22%, #e59a55, transparent 70%), radial-gradient(60% 40% at 78% 58%, #f2bf8a, transparent 70%)"
-      photo="https://picsum.photos/id/1016/600/900"
-      glow={{ left: 120, top: 220, width: 240, height: 240, color: '#f7d2a0', opacity: 0.5, drift: 'back', duration: 15000 }}>
-      <CardPill label="✦ today's thought" />
-      <Text style={styles.date}>{date}</Text>
+      base="#050818"
+      gradient="radial-gradient(80% 35% at 50% 25%, #164a6b, transparent 70%)"
+      photo={CARD_BACKGROUNDS[2]}
+      glow={{ left: 120, top: 220, width: 240, height: 240, color: '#4fdcff', opacity: 0.12, drift: 'back', duration: 15000 }}>
+      <Text style={styles.date}>today&apos;s thought · {date}</Text>
 
-      <View style={[styles.body, { top: `${(150 / 610) * 100}%` }]} accessible accessibilityLabel={`${quote.text} — ${quote.by}`}>
+      {/* Centred in the space between the date and the buttons. */}
+      <View style={styles.body} accessible accessibilityLabel={`${quote.text} — ${quote.by}`}>
         <Text style={styles.mark}>“</Text>
-        <Text style={styles.quote}>{quote.text}</Text>
+        <Text style={styles.quote} numberOfLines={7} adjustsFontSizeToFit minimumFontScale={0.7}>
+          {quote.text}
+        </Text>
         <Text style={styles.by}>— {quote.by}</Text>
       </View>
 
       <View style={styles.actions}>
         <Pressable accessibilityRole="button" onPress={onShare} style={({ pressed }) => [styles.share, pressed && styles.pressed]}>
+          <ShareIcon size={19} color="#111" />
           <Text style={styles.shareText}>share this</Text>
-          <Text style={styles.shareText}>↗</Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"
@@ -59,21 +63,29 @@ export function QuoteCard({ height, active, reduceMotion, quote, date, saved, on
 const styles = StyleSheet.create({
   date: {
     position: 'absolute',
+    left: 22,
     right: 22,
-    top: 36,
+    top: 34,
     fontFamily: BrandFonts.medium,
     fontSize: 13,
     lineHeight: 16,
-    color: '#fff',
+    textAlign: 'center',
+    color: 'rgba(255, 255, 255, 0.85)',
   },
   body: {
     position: 'absolute',
     left: 26,
     right: 26,
+    top: 70,
+    // The buttons (56 tall, 22 from the bottom) plus a gap.
+    bottom: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: 22,
   },
   mark: {
     height: 48,
+    textAlign: 'center',
     fontFamily: BrandFonts.medium,
     fontSize: 80,
     lineHeight: 96,
@@ -84,12 +96,14 @@ const styles = StyleSheet.create({
     fontSize: 31,
     lineHeight: 36,
     letterSpacing: -1,
+    textAlign: 'center',
     color: '#fff',
   },
   by: {
     fontFamily: BrandFonts.regular,
     fontSize: 15,
     lineHeight: 18,
+    textAlign: 'center',
     color: '#fff',
   },
   actions: {

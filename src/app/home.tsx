@@ -1,7 +1,8 @@
 import { router, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AppState,
   BackHandler,
   ScrollView,
   StyleSheet,
@@ -13,6 +14,7 @@ import {
 import Animated, { useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { CARD_BACKGROUNDS } from '@/components/today/backgrounds';
 import { CapsuleVault, type JustSealed } from '@/components/today/capsule-vault';
 import { CardOverlay, OVERLAY_MS, type CardRect } from '@/components/today/card-overlay';
 import { DreamFlow, DreamTabs, type DreamTab } from '@/components/today/dream-flow';
@@ -48,13 +50,13 @@ const CARD_COUNT = 4;
 const GAP = 10;
 /** Space above the first card, and below the last. */
 const EDGE = 6;
+/** Space between the cards and the sides of the screen, so they read as cards. */
+const SIDE = 12;
 /** Just the top of the next card peeks out under the one in view. */
 const PEEK = 40;
 /** Cards never get shorter than this, even on very small phones. */
 const MIN_CARD = 520;
 const TOAST_MS = 2200;
-/** The blurred photo behind each card, in feed order (the opened screens reuse them). */
-const PHOTOS = [1015, 1022, 1016, 1018].map((id) => `https://picsum.photos/id/${id}/600/900`);
 
 /** What an opened card shows. */
 type OverlayContent =
@@ -74,9 +76,19 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
 
-  // Read once: none of this changes while the screen is up.
+  // Read once: the name doesn't change while the screen is up.
   const [name] = useState(loadProfileName);
-  const [now] = useState(() => new Date());
+  // "Now" moves on whenever Home comes back into view or the app is reopened, so a new
+  // day brings a new quote even if the app was left open overnight.
+  const [now, setNow] = useState(() => new Date());
+  const refreshNow = useCallback(() => setNow(new Date()), []);
+  useFocusEffect(refreshNow);
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') refreshNow();
+    });
+    return () => sub.remove();
+  }, [refreshNow]);
   const quote = useMemo(() => quoteOfDay(now), [now]);
   // Told dreams, for the streak and this week's days (reloads whenever Home comes back into view).
   const { dreams } = useDreams();
@@ -201,7 +213,16 @@ export default function HomeScreen() {
           />
         );
       case 'share':
-        return <ShareFlow quote={quote} photo={PHOTOS[2]} reduceMotion={reduceMotion} bottomInset={insets.bottom} onToast={showToast} />;
+        return (
+          <ShareFlow
+            quote={quote}
+            date={shortDate(now)}
+            photo={CARD_BACKGROUNDS[2]}
+            reduceMotion={reduceMotion}
+            bottomInset={insets.bottom}
+            onToast={showToast}
+          />
+        );
       case 'vault':
         return (
           <CapsuleVault
@@ -293,7 +314,7 @@ export default function HomeScreen() {
           open={overlay.open}
           reduceMotion={reduceMotion}
           // The dream reading is plain dark, so the words stand out; the others keep their card's photo.
-          photo={overlay.kind === 'dream' ? undefined : PHOTOS[overlay.card]}
+          photo={overlay.kind === 'dream' ? undefined : CARD_BACKGROUNDS[overlay.card]}
           pill={overlay.pill}
           headerRight={overlay.kind === 'dream' && dreamReady ? <DreamTabs tab={dreamTab} onChange={setDreamTab} /> : undefined}
           topInset={insets.top}
@@ -327,6 +348,7 @@ const styles = StyleSheet.create({
   feed: {
     paddingTop: EDGE,
     paddingBottom: EDGE,
+    paddingHorizontal: SIDE,
     gap: GAP,
   },
   toastRow: {
