@@ -8,7 +8,8 @@
     "scheme": "dreamjournal",
     "userInterfaceStyle": "light",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.moazamdev.aidreamjournal"
     },
     "android": {
       "adaptiveIcon": {
@@ -17,7 +18,12 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.moazamdev.aidreamjournal",
+      "permissions": [
+        "RECORD_AUDIO",
+        "MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "web": {
       "output": "static",
@@ -33,7 +39,12 @@
           "imageWidth": 76
         }
       ],
-      "expo-audio",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow $(PRODUCT_NAME) to use the microphone so you can speak your dreams and talk with your dream companion."
+        }
+      ],
       "expo-asset"
     ],
     "experiments": {

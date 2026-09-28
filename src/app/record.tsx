@@ -4,7 +4,9 @@ import { Alert, ScrollView, StyleSheet, Text, TextInput } from 'react-native';
 
 import { AppButton } from '@/components/app-button';
 import { Screen } from '@/components/screen';
+import { VoiceInput } from '@/components/voice-input';
 import { Colors, Radius, Spacing } from '@/constants/theme';
+import { useDreamRecorder } from '@/hooks/use-dream-recorder';
 import { analyzeDream, createDream } from '@/services/dreams';
 import type { Dream } from '@/types/dream';
 import { getErrorMessage } from '@/utils/errors';
@@ -23,8 +25,15 @@ export default function RecordDreamScreen() {
   const [text, setText] = useState('');
   const [step, setStep] = useState<Step>('idle');
 
+  // Speaking is an alternative to typing: the words are added to the text box,
+  // where the user can still edit them before saving.
+  const voice = useDreamRecorder((spokenText) => {
+    setText((current) => (current.trim() ? `${current.trim()}\n\n${spokenText}` : spokenText));
+  });
+
   const isBusy = step !== 'idle';
-  const canSave = text.trim().length > 0;
+  const isVoiceBusy = voice.phase !== 'idle';
+  const canSave = text.trim().length > 0 && !isVoiceBusy;
 
   async function handleSave() {
     // 1. Save the dream itself. If this fails, stay here and keep the text.
@@ -69,8 +78,18 @@ export default function RecordDreamScreen() {
           placeholderTextColor={Colors.textSecondary}
           multiline
           autoFocus
-          editable={!isBusy}
+          editable={!isBusy && !isVoiceBusy}
           textAlignVertical="top"
+        />
+
+        <VoiceInput
+          phase={voice.phase}
+          durationMillis={voice.durationMillis}
+          error={voice.error}
+          disabled={isBusy}
+          onStart={voice.start}
+          onStop={voice.stopAndTranscribe}
+          onCancel={voice.cancel}
         />
 
         <AppButton

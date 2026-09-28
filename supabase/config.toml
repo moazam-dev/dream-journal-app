@@ -13,3 +13,19 @@ verify_jwt = false
 [functions.generate-dream-audio]
 # Same as above: checked with the publishable key inside the function.
 verify_jwt = false
+
+[functions.transcribe-dream]
+# Same as above: checked with the publishable key inside the function.
+verify_jwt = false
+
+[functions.dream-fragments]
+# Same as above: checked with the publishable key inside the function.
+verify_jwt = false
+
+[functions.deepgram-token]
+# Same as above: checked with the publishable key inside the function.
+verify_jwt = false
+
+[functions.dream-patterns]
+# Same as above: checked with the publishable key inside the function.
+verify_jwt = false

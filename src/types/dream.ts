@@ -33,4 +33,17 @@ export type Dream = {
   // Spoken reflection. `audio_url` is a public link to the WAV file in the `dream-audio` bucket.
   audio_url: string | null;
   audio_status: AudioStatus;
+
+  // Details the dreamer adds themselves after the reflection. Missing on rows saved
+  // before these columns existed, so read them with a fallback.
+  user_mood?: string | null;
+  people?: string[];
+  places?: string[];
+};
+
+/** The parts of a dream the dreamer can change. */
+export type DreamDetails = {
+  user_mood: string | null;
+  people: string[];
+  places: string[];
 };

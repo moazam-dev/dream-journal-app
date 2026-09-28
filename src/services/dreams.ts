@@ -1,7 +1,10 @@
-import { FunctionsHttpError } from '@supabase/supabase-js';
+import { File } from 'expo-file-system';
 
 import { supabase } from '@/lib/supabase';
-import type { Dream } from '@/types/dream';
+import { toReadableError } from '@/services/function-errors';
+import type { Dream, DreamDetails } from '@/types/dream';
+import type { PatternReading } from '@/utils/patterns';
+import type { Ask, Fragment } from '@/utils/today';
 
 /**
  * All database work for dreams lives here, so screens never talk to Supabase directly.
@@ -36,6 +39,21 @@ export async function fetchDreamById(id: string): Promise<Dream | null> {
   const { data, error } = await supabase.from('dreams').select('*').eq('id', id).maybeSingle();
 
   if (error) throw new Error(error.message);
+  return data;
+}
+
+/** Saves the mood, people and places the dreamer added, and returns the updated dream. */
+export async function updateDreamDetails(dreamId: string, details: DreamDetails): Promise<Dream> {
+  const { data, error } = await supabase
+    .from('dreams')
+    .update(details)
+    .eq('id', dreamId)
+    .select()
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  // No row back means the database didn't allow the change (the details migration isn't applied).
+  if (!data) throw new Error('Your details couldn’t be saved yet. Please try again later.');
   return data;
 }
 
@@ -87,16 +105,92 @@ async function invokeDreamFunction(
     body: { dreamId },
   });
 
-  if (error) {
-    // For HTTP errors the function sends back { error: "friendly message" }.
-    if (error instanceof FunctionsHttpError) {
-      const body = await error.context.json().catch(() => null);
-      throw new Error(body?.error ?? fallbackMessage);
-    }
-    throw new Error('Could not reach the server. Check your connection and try again.');
-  }
+  if (error) throw await toReadableError(error, fallbackMessage);
   if (!data?.dream) {
     throw new Error('The server sent an unexpected answer. Please try again.');
   }
   return data.dream;
+}
+
+/**
+ * Sends a voice recording to the `transcribe-dream` Edge Function (server side),
+ * which uses Groq Whisper, and returns the text. Returns '' if no words were heard.
+ * The recording itself is not stored anywhere.
+ */
+export async function transcribeDreamRecording(fileUri: string): Promise<string> {
+  const form = new FormData();
+  // Expo's `fetch` needs a real file object (with its bytes) for uploads, so we wrap the
+  // recording in expo-file-system's `File`. Its name keeps the extension (e.g. ".m4a").
+  form.append('audio', new File(fileUri));
+
+  const { data, error } = await supabase.functions.invoke<{ text: string }>('transcribe-dream', {
+    body: form,
+  });
+
+  if (error) {
+    throw await toReadableError(error, 'We couldn’t turn your recording into text. Please try again.');
+  }
+  if (typeof data?.text !== 'string') {
+    throw new Error('The server sent an unexpected answer. Please try again.');
+  }
+  return data.text;
+}
+
+/**
+ * Asks the `dream-fragments` Edge Function (Groq, server side) for the next question on the
+ * "talk it through" card, built on the answers so far. Nothing is saved.
+ */
+export async function askNextFragment(fragments: readonly Fragment[]): Promise<Ask> {
+  const { data, error } = await supabase.functions.invoke<Ask>('dream-fragments', {
+    body: { mode: 'ask', fragments },
+  });
+
+  if (error) throw await toReadableError(error, 'Afterdream lost its train of thought. Please try again.');
+  if (typeof data?.question !== 'string' || !Array.isArray(data.suggestions)) {
+    throw new Error('The server sent an unexpected answer. Please try again.');
+  }
+  return { question: data.question, suggestions: data.suggestions.filter((s) => typeof s === 'string') };
+}
+
+/** Has the `dream-fragments` Edge Function stitch the answers into one retelling of the dream. */
+export async function composeDreamFromFragments(fragments: readonly Fragment[]): Promise<string> {
+  const { data, error } = await supabase.functions.invoke<{ dream: string }>('dream-fragments', {
+    body: { mode: 'compose', fragments },
+  });
+
+  if (error) throw await toReadableError(error, 'The pieces couldn’t be put together right now. Please try again.');
+  if (typeof data?.dream !== 'string' || !data.dream.trim()) {
+    throw new Error('The server sent an unexpected answer. Please try again.');
+  }
+  return data.dream.trim();
+}
+
+/**
+ * Asks the `dream-patterns` Edge Function (Groq, server side) to read the newest dreams side
+ * by side and find what runs through them. Nothing is saved.
+ */
+export async function readDreamPatterns(): Promise<PatternReading> {
+  const { data, error } = await supabase.functions.invoke<{ reading: PatternReading }>('dream-patterns', {
+    body: { mode: 'read', timezoneOffset: new Date().getTimezoneOffset() },
+  });
+
+  if (error) throw await toReadableError(error, 'Your patterns couldn’t be read right now. Please try again.');
+  const reading = data?.reading;
+  if (typeof reading?.thread?.title !== 'string' || !Array.isArray(reading.insights) || !Array.isArray(reading.questions)) {
+    throw new Error('The server sent an unexpected answer. Please try again.');
+  }
+  return reading;
+}
+
+/** Has the `dream-patterns` Edge Function answer a question about the dreamer's patterns. */
+export async function askDreamPatterns(question: string): Promise<string> {
+  const { data, error } = await supabase.functions.invoke<{ answer: string }>('dream-patterns', {
+    body: { mode: 'ask', question, timezoneOffset: new Date().getTimezoneOffset() },
+  });
+
+  if (error) throw await toReadableError(error, 'Afterdream couldn’t answer that right now. Please try again.');
+  if (typeof data?.answer !== 'string' || !data.answer.trim()) {
+    throw new Error('The server sent an unexpected answer. Please try again.');
+  }
+  return data.answer.trim();
 }

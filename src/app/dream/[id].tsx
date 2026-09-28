@@ -1,8 +1,9 @@
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AiReflectionSection } from '@/components/ai-reflection-section';
+import { AppButton } from '@/components/app-button';
 import { Chip } from '@/components/chip';
 import { DreamImageSection } from '@/components/dream-image-section';
 import { EmptyState } from '@/components/empty-state';
@@ -13,6 +14,7 @@ import { Screen } from '@/components/screen';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { useDreamImage } from '@/hooks/use-dream-image';
 import { useDream } from '@/hooks/use-dreams';
+import { isVoiceAgentAvailable } from '@/lib/deepgram/native-audio';
 import { analyzeDream } from '@/services/dreams';
 import { formatDreamDate } from '@/utils/date';
 import { getErrorMessage } from '@/utils/errors';
@@ -97,6 +99,15 @@ export default function DreamDetailScreen() {
         />
 
         <ReflectionAudioPlayer dream={dream} setDream={setDream} />
+
+        {/* Needs the native development build; hidden in Expo Go. */}
+        {isVoiceAgentAvailable() && (
+          <AppButton
+            title="🎙️  Talk about this dream"
+            variant="secondary"
+            onPress={() => router.push({ pathname: '/voice', params: { dreamId: dream.id } })}
+          />
+        )}
       </ScrollView>
     </Screen>
   );

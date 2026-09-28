@@ -1,54 +1,98 @@
 import { router } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { useEffect, useRef, useState } from 'react';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { useReducedMotion } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AppButton } from '@/components/app-button';
-import { Screen } from '@/components/screen';
-import { Colors, Spacing } from '@/constants/theme';
+import { BrandColors } from '@/constants/theme';
+import { Eyelids } from '@/components/welcome/eyelids';
+import { WelcomeActions } from '@/components/welcome/welcome-actions';
+import { WelcomeHero } from '@/components/welcome/welcome-hero';
 
-/** Onboarding screen. `index.tsx` is the first route the app opens ("/"). */
-export default function OnboardingScreen() {
-  function handleGetStarted() {
-    // `replace` (not `push`) so the user can't go "back" to onboarding from Home.
+/** The design was drawn for a 390 × 844 pt phone; positions scale from that. */
+const DESIGN_HEIGHT = 844;
+/** Where the logo starts in the design (pt from the top). */
+const HERO_TOP = 250;
+/** When the eyelids have opened and the status bar should switch to dark text. */
+const EYES_OPEN_MS = 1300;
+/** Pause on "Good morning" before moving on. */
+const GREETING_PAUSE_MS = 650;
+
+/**
+ * Welcome screen ("/", the first screen), from the Afterdream Welcome v2 design:
+ * black eyelids open onto a lime screen, the logo and "afterdream" come into focus,
+ * "Dreams fade. Words stay." rises in, then the buttons. The eyes blink now and then.
+ */
+export default function WelcomeScreen() {
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const reduceMotion = useReducedMotion();
+
+  const [eyesOpen, setEyesOpen] = useState(reduceMotion);
+  const [greeting, setGreeting] = useState(false);
+  const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setEyesOpen(true), reduceMotion ? 0 : EYES_OPEN_MS);
+    return () => {
+      clearTimeout(timer);
+      if (leaveTimer.current) clearTimeout(leaveTimer.current);
+    };
+  }, [reduceMotion]);
+
+  function handleStart() {
+    // The design greets you before moving on to the agreement screen.
+    setGreeting(true);
+    // `replace` (not `push`) so "back" doesn't return here.
+    leaveTimer.current = setTimeout(() => router.replace('/agreement'), GREETING_PAUSE_MS);
+  }
+
+  function handleExistingAccount() {
+    // There are no accounts yet, so this simply continues to your journal.
     router.replace('/home');
   }
 
+  const heroTop = Math.max(insets.top + 24, height * (HERO_TOP / DESIGN_HEIGHT));
+
   return (
-    <Screen edges={['top', 'bottom', 'left', 'right']} style={styles.container}>
-      <View style={styles.hero}>
-        <Text style={styles.icon}>🌙</Text>
-        <Text style={styles.title}>Dream Journal</Text>
-        <Text style={styles.description}>
-          Write down your dreams each morning and look back on them over time.
-        </Text>
+    <View style={styles.screen}>
+      {/* Light status bar over the closed eyelids, dark once the lime screen shows. */}
+      <StatusBar style={eyesOpen ? 'dark' : 'light'} />
+
+      <View style={[styles.hero, { top: heroTop }]}>
+        <WelcomeHero word="afterdream" reduceMotion={reduceMotion} />
       </View>
 
-      <AppButton title="Get Started" onPress={handleGetStarted} />
-    </Screen>
+      <View style={[styles.actions, { bottom: Math.max(insets.bottom, 16) + 12 }]}>
+        <WelcomeActions
+          primaryLabel={greeting ? 'Good morning' : 'Begin'}
+          onPrimary={handleStart}
+          secondaryLabel="I have an account"
+          onSecondary={handleExistingAccount}
+          disabled={greeting}
+          reduceMotion={reduceMotion}
+        />
+      </View>
+
+      <Eyelids width={width} height={height} blink reduceMotion={reduceMotion} />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    justifyContent: 'space-between',
+  screen: {
+    flex: 1,
+    backgroundColor: BrandColors.lime,
   },
   hero: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: Spacing.md,
+    position: 'absolute',
+    left: 0,
+    right: 0,
   },
-  icon: {
-    fontSize: 64,
-  },
-  title: {
-    fontSize: 34,
-    fontWeight: '700',
-    color: Colors.text,
-  },
-  description: {
-    fontSize: 17,
-    lineHeight: 24,
-    color: Colors.textSecondary,
-    textAlign: 'center',
+  actions: {
+    position: 'absolute',
+    left: 28,
+    right: 28,
   },
 });

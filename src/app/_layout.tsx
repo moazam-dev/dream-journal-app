@@ -1,13 +1,38 @@
+import {
+  BricolageGrotesque_400Regular,
+  BricolageGrotesque_500Medium,
+  BricolageGrotesque_600SemiBold,
+  useFonts,
+} from '@expo-google-fonts/bricolage-grotesque';
 import { Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 
-import { Colors } from '@/constants/theme';
+import { BrandColors, Colors, NightColors, VoiceColors } from '@/constants/theme';
+import { SLIDE_BACKGROUNDS } from '@/utils/personalize';
+
+// Keep the splash screen up until the brand font has loaded (avoids a flash of the wrong font).
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 /**
  * Root layout: wraps every screen in the app.
  * Stack is the navigator: new screens slide in on top, "back" pops them off.
  */
 export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts({
+    BricolageGrotesque_400Regular,
+    BricolageGrotesque_500Medium,
+    BricolageGrotesque_600SemiBold,
+  });
+  const ready = fontsLoaded || !!fontError; // if the font fails, carry on with the system font
+
+  useEffect(() => {
+    if (ready) SplashScreen.hideAsync().catch(() => {});
+  }, [ready]);
+
+  if (!ready) return null;
+
   return (
     <>
       <StatusBar style="dark" />
@@ -19,11 +44,75 @@ export default function RootLayout() {
           contentStyle: { backgroundColor: Colors.background },
         }}>
         {/* `name` matches the file path inside src/app (without .tsx). */}
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="home" options={{ title: 'Dream Journal' }} />
+        <Stack.Screen
+          name="index"
+          options={{ headerShown: false, contentStyle: { backgroundColor: BrandColors.ink } }}
+        />
+        <Stack.Screen
+          name="agreement"
+          options={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: NightColors.background } }}
+        />
+        <Stack.Screen
+          name="welcome-in"
+          options={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: NightColors.background } }}
+        />
+        <Stack.Screen
+          name="onboarding-name"
+          options={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: NightColors.background } }}
+        />
+        <Stack.Screen
+          name="onboarding-birthday"
+          options={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: NightColors.background } }}
+        />
+        <Stack.Screen
+          name="onboarding-gender"
+          options={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: NightColors.background } }}
+        />
+        <Stack.Screen
+          name="onboarding-frequency"
+          options={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: NightColors.background } }}
+        />
+        <Stack.Screen
+          name="onboarding-vision"
+          options={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: NightColors.background } }}
+        />
+        {/* No swiping back into onboarding once it's done. */}
+        <Stack.Screen
+          name="personalizing"
+          options={{ headerShown: false, animation: 'fade', gestureEnabled: false, contentStyle: { backgroundColor: SLIDE_BACKGROUNDS[0] } }}
+        />
+        {/* The Today feed: black, full screen, with its own tab bar. */}
+        <Stack.Screen
+          name="home"
+          options={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: '#000000' } }}
+        />
+        {/* Dreams as full-screen pictures: black, with the same tab bar as home. */}
+        <Stack.Screen
+          name="visualize"
+          options={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: '#000000' } }}
+        />
+        {/* Every dream told, under a night sky, with the same tab bar as home. */}
+        <Stack.Screen
+          name="entries"
+          options={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: '#050508' } }}
+        />
+        {/* What keeps coming back across the dreams, with the same tab bar as home. */}
+        <Stack.Screen
+          name="patterns"
+          options={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: '#000000' } }}
+        />
         <Stack.Screen name="record" options={{ title: 'New Dream' }} />
         <Stack.Screen name="history" options={{ title: 'Dream History' }} />
         <Stack.Screen name="dream/[id]" options={{ title: 'Dream' }} />
+        {/* Full-screen, dark voice companion with its own header. */}
+        <Stack.Screen
+          name="voice"
+          options={{
+            headerShown: false,
+            presentation: 'fullScreenModal',
+            contentStyle: { backgroundColor: VoiceColors.background },
+          }}
+        />
       </Stack>
     </>
   );
