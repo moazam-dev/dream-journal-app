@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, {
   cubicBezier,
@@ -11,18 +11,16 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BrandColors, BrandFonts, NightColors } from '@/constants/theme';
+import { entrance } from '@/components/onboarding/motion';
 import { ProgressBar } from '@/components/onboarding/progress-bar';
 import { Sunrise } from '@/components/onboarding/sunrise';
 import { saveProfileName } from '@/lib/profile';
-import { getGreeting } from '@/utils/date';
 
 /** Onboarding has 5 steps; this is the first. */
 const STEPS = 5;
 const MAX_NAME_LENGTH = 18;
 /** The glow is fully risen at this many letters. */
 const FULL_GLOW_LETTERS = 8;
-/** Time to enjoy "good morning, …" before moving on. */
-const DONE_PAUSE_MS = 1400;
 
 const LINE_ONE = ['hey,', 'night', 'owl.'];
 const LINE_TWO = ['what', 'should', 'we', 'call', 'you?'];
@@ -32,10 +30,6 @@ const WORD_IN = {
   to: { opacity: 1, transform: [{ translateY: 0 }] },
 };
 const FADE = { from: { opacity: 0 }, to: { opacity: 1 } };
-const HORIZON = {
-  from: { transform: [{ scaleX: 0 }] },
-  to: { transform: [{ scaleX: 1 }] },
-};
 const PULSE = {
   '0%': { opacity: 0.35 },
   '50%': { opacity: 1 },
@@ -45,38 +39,27 @@ const PULSE = {
 /**
  * Onboarding step 1 ("/onboarding-name"), shown after "You're in", from the
  * Afterdream Onboarding Name design: "hey, night owl. what should we call you?"
- * A glow rises over the horizon (just above the keyboard) with every letter typed.
+ * A glow rises just above the keyboard with every letter typed.
  */
 export default function OnboardingNameScreen() {
   const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
   // Deprecated in favour of react-native-keyboard-controller, but that needs a new native
-  // build; this keeps the horizon glued to the top of the keyboard with what's installed.
+  // build; this keeps the glow glued to the top of the keyboard with what's installed.
   const keyboard = useAnimatedKeyboard();
 
   const [name, setName] = useState('');
   const [done, setDone] = useState(false);
-  const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (leaveTimer.current) clearTimeout(leaveTimer.current);
-    };
-  }, []);
 
   // Coming back from the birthday screen: let them continue again.
   useFocusEffect(useCallback(() => setDone(false), []));
 
   const trimmed = name.trim();
   const hasName = trimmed.length > 0;
-  const firstName = trimmed.split(/\s+/)[0];
   const progress = Math.min(trimmed.length / FULL_GLOW_LETTERS, 1);
 
-  const hint = done
-    ? `${getGreeting().toLowerCase()}, ${firstName}.`
-    : hasName
-      ? 'the sun rises a little with every letter.'
-      : 'a first name or a nickname — anything works.';
+  // Shown only until they start typing.
+  const hint = hasName ? null : 'a first name or a nickname — anything works.';
 
   function handleChange(text: string) {
     // No double spaces or leading space, like the design's keyboard.
@@ -89,7 +72,7 @@ export default function OnboardingNameScreen() {
     setDone(true);
     saveProfileName(trimmed);
     // `push` so the birthday screen's back button returns here.
-    leaveTimer.current = setTimeout(() => router.push('/onboarding-birthday'), DONE_PAUSE_MS);
+    router.push('/onboarding-birthday');
   }
 
   /** Skips only this question. */
@@ -97,14 +80,14 @@ export default function OnboardingNameScreen() {
     router.push('/onboarding-birthday');
   }
 
-  // Everything around the horizon sits on top of the keyboard and follows it up and down.
+  // The glow and button sit on top of the keyboard and follows it up and down.
   const minBottom = insets.bottom + 16;
   const dockStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: -Math.max(keyboard.height.get(), minBottom) }],
   }));
 
   function animate(style: object) {
-    return reduceMotion ? null : { animationFillMode: 'both' as const, ...style };
+    return entrance(reduceMotion, style);
   }
 
   return (
@@ -113,12 +96,6 @@ export default function OnboardingNameScreen() {
 
       <Animated.View style={[styles.dock, dockStyle]} pointerEvents="box-none">
         <Sunrise progress={progress} done={done} reduceMotion={reduceMotion} />
-        <Animated.View
-          style={[
-            styles.horizon,
-            animate({ animationName: HORIZON, animationDuration: 1200, animationDelay: 500, animationTimingFunction: cubicBezier(0.6, 0, 0.2, 1) }),
-          ]}
-        />
         <Pressable
           accessibilityRole="button"
           accessibilityState={{ disabled: !hasName }}
@@ -223,12 +200,10 @@ export default function OnboardingNameScreen() {
           selectionColor={BrandColors.lime}
           cursorColor={BrandColors.lime}
           accessibilityLabel="Your name"
-          accessibilityHint={hint}
+          accessibilityHint={hint ?? undefined}
           style={styles.input}
         />
-        <Text style={styles.hint} accessibilityLiveRegion="polite">
-          {hint}
-        </Text>
+        {hint && <Text style={styles.hint}>{hint}</Text>}
       </Animated.View>
     </View>
   );
@@ -330,14 +305,6 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     height: 380,
-  },
-  horizon: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 1,
-    backgroundColor: NightColors.horizon,
   },
   continueWrap: {
     position: 'absolute',

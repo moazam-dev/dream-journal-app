@@ -1,5 +1,6 @@
 import { Image } from 'expo-image';
-import { StyleSheet, Text, View } from 'react-native';
+import type { ReactNode } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Defs, LinearGradient, Path, Stop } from 'react-native-svg';
 
 import { BrandFonts } from '@/constants/theme';
@@ -9,16 +10,55 @@ const GHOST = require('@/assets/images/ghost-body.png');
 /** Height of the bar, below the status bar. */
 export const BRAND_BAR_HEIGHT = 56;
 
-/** Row at the top of Entries and Visualize: the white ghost, and the streak with its flame. */
-export function BrandBar({ streak }: { streak: number }) {
+type BrandBarProps = {
+  /** The page's name, next to the ghost. */
+  title: string;
+  streak: number;
+  /** The page's own buttons (see HeaderButton), just before the streak. */
+  children?: ReactNode;
+};
+
+/**
+ * The top bar every tab shares (Visualize, Garden, Entries, Patterns): the white ghost and
+ * the page's name on the left; the page's buttons and the streak with its flame on the right.
+ */
+export function BrandBar({ title, streak, children }: BrandBarProps) {
   return (
     <View style={styles.bar}>
-      <Image source={GHOST} style={styles.ghost} contentFit="contain" tintColor="#fff" accessibilityLabel="afterdream" />
-      <View style={styles.streak} accessible accessibilityLabel={`${streak} night${streak === 1 ? '' : 's'} in a row`}>
-        <Flame />
-        <Text style={styles.count}>{streak}</Text>
+      <View style={styles.left}>
+        <Image source={GHOST} style={styles.ghost} contentFit="contain" tintColor="#fff" accessibilityLabel="afterdream" />
+        <Text style={styles.title} accessibilityRole="header" numberOfLines={1}>
+          {title}
+        </Text>
+      </View>
+      <View style={styles.right}>
+        {children}
+        <View style={styles.streak} accessible accessibilityLabel={`${streak} night${streak === 1 ? '' : 's'} in a row`}>
+          <Flame />
+          <Text style={styles.count}>{streak}</Text>
+        </View>
       </View>
     </View>
+  );
+}
+
+type HeaderButtonProps = {
+  label: string;
+  onPress: () => void;
+  children: ReactNode;
+};
+
+/** A round outlined button for the bar's right side, so every page's buttons look alike. */
+export function HeaderButton({ label, onPress, children }: HeaderButtonProps) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={6}
+      onPress={onPress}
+      style={({ pressed }) => [styles.button, pressed && styles.pressed]}>
+      {children}
+    </Pressable>
   );
 }
 
@@ -49,10 +89,42 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 12,
+  },
+  left: {
+    flexShrink: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   ghost: {
     width: 36,
     height: 36,
+  },
+  title: {
+    flexShrink: 1,
+    fontFamily: BrandFonts.medium,
+    fontSize: 24,
+    lineHeight: 28,
+    letterSpacing: -0.8,
+    color: '#fff',
+  },
+  right: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  button: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pressed: {
+    opacity: 0.7,
   },
   streak: {
     flexDirection: 'row',

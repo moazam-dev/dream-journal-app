@@ -7,9 +7,10 @@ import Animated, { useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MoodCard, QuestionCard, SymbolsCard, ThemesCard, ThreadCard, VividCard } from '@/components/patterns/deep';
-import { DOT, forever, up } from '@/components/patterns/motion';
+import { DOT, forever } from '@/components/patterns/motion';
 import { CastCard, HeroCard, LogCard, ReportCard, StatsGrid, type Kpi } from '@/components/patterns/overview';
 import { GearIcon } from '@/components/settings/icons';
+import { BrandBar, HeaderButton } from '@/components/today/brand-bar';
 import { animate, FADE, TOAST } from '@/components/today/motion';
 import { openTab, TAB_BAR_HEIGHT, TabBar, type Tab } from '@/components/today/tab-bar';
 import { PatternColors as C, PatternFonts as F } from '@/constants/theme';
@@ -29,7 +30,6 @@ import {
   monthReport,
   moodHeadline,
   moodMix,
-  patternsDate,
   pickCast,
   pickSymbols,
   readingLines,
@@ -161,8 +161,13 @@ export default function PatternsScreen() {
   }
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { paddingTop: insets.top }]}>
       <StatusBar style="light" />
+      <BrandBar title="patterns" streak={streak}>
+        <HeaderButton label="settings" onPress={() => router.push('/settings')}>
+          <GearIcon size={18} color="#fff" />
+        </HeaderButton>
+      </BrandBar>
 
       {loading && dreams.length === 0 ? (
         <View style={styles.status}>
@@ -191,26 +196,9 @@ export default function PatternsScreen() {
       ) : (
         <ScrollView
           ref={scroll}
-          style={[styles.scroll, { marginTop: insets.top, marginBottom: TAB_BAR_HEIGHT + tabBarBottom }]}
-          stickyHeaderIndices={[1]}
+          style={[styles.scroll, { marginBottom: TAB_BAR_HEIGHT + tabBarBottom }]}
+          stickyHeaderIndices={[0]}
           showsVerticalScrollIndicator={false}>
-          <Animated.View style={[styles.header, up(reduceMotion, 0)]}>
-            <View style={styles.headerText}>
-              <Text style={styles.date}>{patternsDate(now)}</Text>
-              <Text style={styles.title} accessibilityRole="header">
-                Patterns
-              </Text>
-            </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="settings"
-              onPress={() => router.push('/settings')}
-              hitSlop={6}
-              style={({ pressed }) => [styles.badge, pressed && styles.pressed]}>
-              <GearIcon color={C.cream} />
-            </Pressable>
-          </Animated.View>
-
           <View style={styles.switchRow}>
             <View style={styles.switch} accessibilityRole="tablist">
               <SwitchTab label="Overview" selected={!deep} onPress={() => go('overview')} />
@@ -280,7 +268,7 @@ export default function PatternsScreen() {
       )}
 
       <View style={styles.tabBar}>
-        <TabBar current="patterns" bottomInset={tabBarBottom} onPick={pickTab} background={C.background} />
+        <TabBar current="patterns" bottomInset={tabBarBottom} onPick={pickTab} />
       </View>
     </View>
   );
@@ -313,12 +301,7 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   italic: { fontFamily: F.serifItalic },
   pressed: { opacity: 0.8 },
-  header: { paddingTop: 10, paddingHorizontal: 22, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
-  headerText: { gap: 2 },
-  date: { fontFamily: F.sansMedium, fontSize: 13, lineHeight: 16, letterSpacing: 1.2, textTransform: 'uppercase', color: C.muted },
-  title: { fontFamily: F.serif, fontSize: 56, lineHeight: 60, letterSpacing: -1, color: C.cream },
-  badge: { width: 44, height: 44, borderRadius: 22, borderWidth: 1.5, borderColor: C.cream, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
-  switchRow: { paddingVertical: 14, paddingHorizontal: 16, backgroundColor: C.background },
+  switchRow: { paddingTop: 4, paddingBottom: 14, paddingHorizontal: 16, backgroundColor: C.background },
   switch: { flexDirection: 'row', borderBottomWidth: 1.5, borderBottomColor: C.line },
   switchTab: { flex: 1, height: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderBottomWidth: 2, marginBottom: -1.5 },
   switchText: { fontFamily: F.sansMedium, fontSize: 16, lineHeight: 19 },
@@ -331,5 +314,5 @@ const styles = StyleSheet.create({
   statusButtonText: { fontFamily: F.sansSemibold, fontSize: 15, lineHeight: 18, color: C.ink },
   toast: { position: 'absolute', alignSelf: 'center', height: 40, paddingHorizontal: 18, borderRadius: 20, backgroundColor: C.cream, justifyContent: 'center' },
   toastText: { fontFamily: F.sansSemibold, fontSize: 14, lineHeight: 17, color: C.ink },
-  tabBar: { position: 'absolute', left: 0, right: 0, bottom: 0, borderTopWidth: 1.5, borderTopColor: C.line, backgroundColor: C.background },
+  tabBar: { position: 'absolute', left: 0, right: 0, bottom: 0, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' },
 });

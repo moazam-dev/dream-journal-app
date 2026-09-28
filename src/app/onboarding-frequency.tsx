@@ -1,26 +1,23 @@
 import { router, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { cubicBezier, useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BrandColors, BrandFonts, NightColors } from '@/constants/theme';
 import { DreamWeek } from '@/components/onboarding/dream-week';
+import { entrance } from '@/components/onboarding/motion';
 import { ProgressBar } from '@/components/onboarding/progress-bar';
-import { RecallGlow } from '@/components/onboarding/recall-glow';
 import { StarDust } from '@/components/onboarding/star-dust';
 import { saveProfileRecall } from '@/lib/profile';
 import { RECALL_ANSWERS, RECALLS, type Recall } from '@/utils/recall';
 
 /** Onboarding has 5 steps; this is the fourth. */
 const STEPS = 5;
-/** Time to enjoy "got it ✦" before moving on. */
-const DONE_PAUSE_MS = 1400;
 
 /** A picked answer springs up a little (overshoots, then settles). */
 const SPRING = cubicBezier(0.3, 1.6, 0.5, 1);
-const ACCENTS = RECALLS.map((recall) => RECALL_ANSWERS[recall].color);
 
 const WORD_IN = {
   from: { opacity: 0, transform: [{ translateY: 10 }] },
@@ -48,7 +45,7 @@ const TITLE_WORDS = [
 /**
  * Onboarding step 4 ("/onboarding-frequency"), after gender, from the
  * Afterdream Onboarding Frequency design: "how often do you remember your dreams?".
- * Each answer tints the screen and lights up that many nights of a sample week.
+ * Each answer tints the question and lights up that many nights of a sample week.
  */
 export default function OnboardingFrequencyScreen() {
   const insets = useSafeAreaInsets();
@@ -56,14 +53,6 @@ export default function OnboardingFrequencyScreen() {
 
   const [recall, setRecall] = useState<Recall | null>(null);
   const [done, setDone] = useState(false);
-  const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (leaveTimer.current) clearTimeout(leaveTimer.current);
-    };
-  }, []);
-
   // Coming back from a later step: let them continue again.
   useFocusEffect(useCallback(() => setDone(false), []));
 
@@ -79,7 +68,7 @@ export default function OnboardingFrequencyScreen() {
     if (!recall || done) return;
     setDone(true);
     saveProfileRecall(recall);
-    leaveTimer.current = setTimeout(goToVision, DONE_PAUSE_MS);
+    goToVision();
   }
 
   function handleBack() {
@@ -88,13 +77,12 @@ export default function OnboardingFrequencyScreen() {
   }
 
   function animate(style: object) {
-    return reduceMotion ? null : { animationFillMode: 'both' as const, ...style };
+    return entrance(reduceMotion, style);
   }
 
   return (
     <View style={styles.screen}>
       <StatusBar style="light" />
-      <RecallGlow color={answer?.color ?? null} colors={ACCENTS} top={insets.top - 136} reduceMotion={reduceMotion} />
       <StarDust top={insets.top} reduceMotion={reduceMotion} count={16} spread={170} color={NightColors.text} />
 
       <View style={[styles.topBar, { top: insets.top + 6 }]}>

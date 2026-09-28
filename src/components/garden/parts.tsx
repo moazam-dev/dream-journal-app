@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
-import Svg, { Path } from 'react-native-svg';
 
+import { HeaderButton } from '@/components/today/brand-bar';
 import { animate, EASE_OUT, FADE } from '@/components/today/motion';
 import { BrandColors, BrandFonts } from '@/constants/theme';
 import { FULL_GROWTH, GARDEN_RULES, type PickCard } from '@/utils/garden';
@@ -11,59 +11,23 @@ import { BANNER, BREATH, POP, TOAST, UP } from './motion';
 /** The sheets' dark card colour. */
 const SHEET = '#1c1b20';
 
-/** The streak flame: orange while there's a streak, grey without one. */
-function Flame({ lit }: { lit: boolean }) {
-  return (
-    <Svg width={16} height={20} viewBox="0 0 16 20" fill="none">
-      <Path
-        d="M8 0.5c0.6 3.2 5.5 5.6 5.5 11.2A5.5 5.5 0 0 1 2.5 11.7C2.5 8.6 4.3 7 5.2 5.4c0.3 1.7 1.1 2.7 2.1 3.1C7.1 6 7.2 3 8 0.5z"
-        fill={lit ? '#FF8A3D' : 'rgba(255,255,255,0.45)'}
-      />
-      <Path
-        d="M8 10.5c0.3 1.4 2.4 2.3 2.4 4.4a2.4 2.4 0 0 1-4.8 0c0-1.3 0.7-2 1.2-2.7 0.2 0.6 0.5 1 0.9 1.1C7.6 12.3 7.7 11.4 8 10.5z"
-        fill="#FFE39A"
-      />
-    </Svg>
-  );
-}
-
-type HeaderProps = {
-  streak: number;
+type ActionsProps = {
   demoPlaying: boolean;
   onDemo: () => void;
   onRules: () => void;
 };
 
-/** "your dream garden (?)" on the left; the demo button and the streak on the right. */
-export function GardenHeader({ streak, demoPlaying, onDemo, onRules }: HeaderProps) {
+/** The garden's buttons in the shared top bar: what the garden is, and the full demo. */
+export function GardenActions({ demoPlaying, onDemo, onRules }: ActionsProps) {
   return (
-    <View style={styles.header}>
-      <View style={styles.titleBlock}>
-        <Text style={styles.title} accessibilityRole="header">
-          your dream
-        </Text>
-        <View style={styles.titleRow}>
-          <Text style={styles.title}>garden</Text>
-          <Pressable accessibilityRole="button" accessibilityLabel="What is this?" hitSlop={10} onPress={onRules} style={styles.help}>
-            <Text style={styles.helpText}>?</Text>
-          </Pressable>
-        </View>
-      </View>
-      <View style={styles.headerRight}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={demoPlaying ? 'Stop demo' : 'Play full demo'}
-          hitSlop={10}
-          onPress={onDemo}
-          style={({ pressed }) => [styles.demo, pressed && styles.demoPressed]}>
-          {demoPlaying ? <View style={styles.stop} /> : <View style={styles.play} />}
-        </Pressable>
-        <View style={styles.streak} accessible accessibilityLabel={`${streak} night${streak === 1 ? '' : 's'} in a row`}>
-          <Flame lit={streak > 0} />
-          <Text style={styles.streakCount}>{streak}</Text>
-        </View>
-      </View>
-    </View>
+    <>
+      <HeaderButton label="What is this?" onPress={onRules}>
+        <Text style={styles.helpText}>?</Text>
+      </HeaderButton>
+      <HeaderButton label={demoPlaying ? 'Stop demo' : 'Play full demo'} onPress={onDemo}>
+        {demoPlaying ? <View style={styles.stop} /> : <View style={styles.play} />}
+      </HeaderButton>
+    </>
   );
 }
 
@@ -250,90 +214,29 @@ export function RulesSheet({ reduceMotion, onClose }: { reduceMotion: boolean; o
 }
 
 const styles = StyleSheet.create({
-  header: {
-    position: 'absolute',
-    left: 22,
-    right: 20,
-    zIndex: 2,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 10,
-  },
-  titleBlock: {
-    gap: 2,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  title: {
-    fontFamily: BrandFonts.medium,
-    fontSize: 17,
-    lineHeight: 19,
-    letterSpacing: -0.3,
-    color: '#fff',
-  },
-  help: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    borderWidth: 1.2,
-    borderColor: 'rgba(255,255,255,0.85)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   helpText: {
     fontFamily: BrandFonts.semibold,
-    fontSize: 10,
-    lineHeight: 12,
+    fontSize: 16,
+    lineHeight: 19,
     color: '#fff',
-  },
-  headerRight: {
-    height: 24,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 18,
-  },
-  demo: {
-    width: 24,
-    height: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  demoPressed: {
-    transform: [{ scale: 0.9 }],
   },
   play: {
     width: 0,
     height: 0,
     marginLeft: 3,
     borderStyle: 'solid',
-    borderTopWidth: 8,
-    borderBottomWidth: 8,
-    borderLeftWidth: 13,
+    borderTopWidth: 6,
+    borderBottomWidth: 6,
+    borderLeftWidth: 10,
     borderTopColor: 'transparent',
     borderBottomColor: 'transparent',
     borderLeftColor: '#fff',
   },
   stop: {
-    width: 12,
-    height: 12,
+    width: 10,
+    height: 10,
     borderRadius: 2,
     backgroundColor: '#fff',
-  },
-  streak: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  streakCount: {
-    fontFamily: BrandFonts.semibold,
-    fontSize: 16,
-    lineHeight: 19,
-    color: '#fff',
-    fontVariant: ['tabular-nums'],
   },
   planting: {
     position: 'absolute',

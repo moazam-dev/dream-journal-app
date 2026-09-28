@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { cubicBezier, useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BrandColors, BrandFonts, NightColors } from '@/constants/theme';
 import { BirthMoon } from '@/components/onboarding/birth-moon';
 import { DateRuler } from '@/components/onboarding/date-ruler';
+import { entrance } from '@/components/onboarding/motion';
 import { ProgressBar } from '@/components/onboarding/progress-bar';
 import { StarDust } from '@/components/onboarding/star-dust';
 import { loadProfileName, saveProfileBirthday } from '@/lib/profile';
@@ -15,8 +16,6 @@ import { daysInMonth, moonPhase } from '@/utils/moon';
 
 /** Onboarding has 5 steps; this is the second. */
 const STEPS = 5;
-/** Time to enjoy "written in the stars ✦" before moving on. */
-const DONE_PAUSE_MS = 1400;
 
 const FIRST_YEAR = 1940;
 const LAST_YEAR = 2012;
@@ -57,14 +56,6 @@ export default function OnboardingBirthdayScreen() {
   const [part, setPart] = useState<Part>('month');
   const [touched, setTouched] = useState(false);
   const [done, setDone] = useState(false);
-  const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (leaveTimer.current) clearTimeout(leaveTimer.current);
-    };
-  }, []);
-
   // Coming back from the gender screen: let them continue again.
   useFocusEffect(useCallback(() => setDone(false), []));
 
@@ -96,7 +87,7 @@ export default function OnboardingBirthdayScreen() {
     setDone(true);
     saveProfileBirthday(year, month, safeDay + 1);
     // `push` so the gender screen's back button returns here.
-    leaveTimer.current = setTimeout(() => router.push('/onboarding-gender'), DONE_PAUSE_MS);
+    router.push('/onboarding-gender');
   }
 
   /** Skips only this question. */
@@ -110,7 +101,7 @@ export default function OnboardingBirthdayScreen() {
   }
 
   function animate(style: object) {
-    return reduceMotion ? null : { animationFillMode: 'both' as const, ...style };
+    return entrance(reduceMotion, style);
   }
 
   const greeting = name ? `hey ${name},` : 'hey you,';

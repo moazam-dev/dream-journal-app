@@ -17,8 +17,6 @@ export const COLUMN_WIDTH = 220;
 const BREATHE = { from: { opacity: 0.45 }, to: { opacity: 1 } };
 
 type ColumnProps = {
-  /** Height the column fills (the gallery's height). */
-  height: number;
   /** Side of the square picture (smaller on short phones). */
   size: number;
 };
@@ -34,7 +32,7 @@ type PaintingProps = ColumnProps & {
  * One dream in the Visualize gallery: its date, mood and title over its picture. Paints
  * the picture on the server if it has none yet (and checks back while it's painting).
  */
-export function Painting({ dream, height, size, reduceMotion, onChange, onOpen }: PaintingProps) {
+export function Painting({ dream, size, reduceMotion, onChange, onOpen }: PaintingProps) {
   const setDream: Dispatch<SetStateAction<Dream | null>> = (change) => onChange(dream.id, change);
   const image = useDreamImage(dream, setDream);
   const title = dreamHeadline(dream);
@@ -48,7 +46,6 @@ export function Painting({ dream, height, size, reduceMotion, onChange, onOpen }
 
   return (
     <Column
-      height={height}
       size={size}
       meta={cardMeta(dream)}
       title={title}
@@ -79,9 +76,9 @@ export function Painting({ dream, height, size, reduceMotion, onChange, onOpen }
 }
 
 /** The last column: tonight's dream, still to come. */
-export function NextDream({ height, size, onPress }: ColumnProps & { onPress: () => void }) {
+export function NextDream({ size, onPress }: ColumnProps & { onPress: () => void }) {
   return (
-    <Column height={height} size={size} meta="tonight • ?" title="your next dream" label="Tell afterdream a new dream" background={BrandColors.lime} onPress={onPress}>
+    <Column size={size} meta="tonight • ?" title="your next dream" label="Tell afterdream a new dream" background={BrandColors.lime} onPress={onPress}>
       <Text style={styles.hint}>tell afterdream what you saw and we’ll paint it here.</Text>
     </Column>
   );
@@ -96,9 +93,9 @@ type ColumnBaseProps = ColumnProps & {
   children: React.ReactNode;
 };
 
-function Column({ height, size, meta, title, label, background, onPress, children }: ColumnBaseProps) {
+function Column({ size, meta, title, label, background, onPress, children }: ColumnBaseProps) {
   return (
-    <View style={[styles.column, { height }]}>
+    <View style={styles.column}>
       <View style={styles.head}>
         <Text style={styles.meta}>{meta}</Text>
         <Text style={styles.title} numberOfLines={2}>

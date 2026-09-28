@@ -45,7 +45,8 @@
           "microphonePermission": "Allow $(PRODUCT_NAME) to use the microphone so you can speak your dreams and talk with your dream companion."
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true,

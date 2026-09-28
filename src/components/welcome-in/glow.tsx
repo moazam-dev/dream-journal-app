@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View, type GestureResponderEvent } from 'react-native';
 import Animated, { cubicBezier } from 'react-native-reanimated';
 
-import { BrandColors, BrandFonts, NightColors } from '@/constants/theme';
+import { BrandColors, BrandFonts } from '@/constants/theme';
 
 type GlowProps = {
   /** Called on every tap on the glow (after the ripple starts). */
-  onTap: () => void;
+  onTap?: () => void;
   reduceMotion: boolean;
 };
 
@@ -39,22 +39,6 @@ const DROP = {
   '80%': { transform: [{ translateY: -4 }, { rotate: '-1deg' }] },
   '100%': { opacity: 1, transform: [{ translateY: 0 }, { rotate: '0deg' }] },
 };
-const FADE = { from: { opacity: 0 }, to: { opacity: 1 } };
-/** "breathe in…" shows for the first half of each 8 s breath, "and let it go" for the second. */
-const SAY_IN = {
-  '0%': { opacity: 1, transform: [{ translateY: 0 }] },
-  '42%': { opacity: 1, transform: [{ translateY: 0 }] },
-  '50%': { opacity: 0, transform: [{ translateY: -6 }] },
-  '92%': { opacity: 0, transform: [{ translateY: -6 }] },
-  '100%': { opacity: 1, transform: [{ translateY: 0 }] },
-};
-const SAY_OUT = {
-  '0%': { opacity: 0, transform: [{ translateY: 6 }] },
-  '42%': { opacity: 0, transform: [{ translateY: 6 }] },
-  '50%': { opacity: 1, transform: [{ translateY: 0 }] },
-  '92%': { opacity: 1, transform: [{ translateY: 0 }] },
-  '100%': { opacity: 0, transform: [{ translateY: 6 }] },
-};
 const RIPPLE = {
   from: { opacity: 0.7, transform: [{ scale: 0 }] },
   to: { opacity: 0, transform: [{ scale: 1 }] },
@@ -79,7 +63,7 @@ export function Glow({ onTap, reduceMotion }: GlowProps) {
   }, []);
 
   function handlePress(event: GestureResponderEvent) {
-    onTap();
+    onTap?.();
     if (reduceMotion) return;
 
     const id = ++nextId.current;
@@ -103,7 +87,7 @@ export function Glow({ onTap, reduceMotion }: GlowProps) {
       ]}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Congrats, you're in. Tap the glow to let go."
+        accessibilityLabel="Congrats, you're in."
         onPress={handlePress}
         style={StyleSheet.absoluteFill}>
         {/* Touches go to the Pressable, so ripple positions are measured on the whole glow. */}
@@ -158,39 +142,6 @@ export function Glow({ onTap, reduceMotion }: GlowProps) {
               </Animated.Text>
             ))}
           </View>
-
-          <Animated.View
-            style={[styles.saying, animate({ animationName: FADE, animationDuration: 800, animationDelay: 2600, animationTimingFunction: 'ease' })]}>
-            <Animated.Text
-              style={[
-                styles.sayingText,
-                animate({
-                  animationName: SAY_IN,
-                  animationDuration: 8000,
-                  animationDelay: 1600,
-                  animationTimingFunction: 'ease-in-out',
-                  animationIterationCount: 'infinite',
-                }),
-              ]}>
-              breathe in…
-            </Animated.Text>
-            {/* With reduced motion only "breathe in…" is shown. */}
-            {!reduceMotion && (
-              <Animated.Text
-                style={[
-                  styles.sayingText,
-                  animate({
-                    animationName: SAY_OUT,
-                    animationDuration: 8000,
-                    animationDelay: 1600,
-                    animationTimingFunction: 'ease-in-out',
-                    animationIterationCount: 'infinite',
-                  }),
-                ]}>
-                and let it go
-              </Animated.Text>
-            )}
-          </Animated.View>
         </View>
       </Pressable>
     </Animated.View>
@@ -246,19 +197,5 @@ const styles = StyleSheet.create({
     lineHeight: 148,
     letterSpacing: -6,
     color: BrandColors.ink,
-  },
-  saying: {
-    width: 200,
-    height: 22,
-    // The design's 22 pt gap, minus the taller line box above.
-    marginTop: 12,
-  },
-  sayingText: {
-    ...FILL,
-    textAlign: 'center',
-    fontFamily: BrandFonts.regular,
-    fontSize: 16,
-    lineHeight: 22,
-    color: NightColors.onLimeSoft,
   },
 });

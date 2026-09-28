@@ -1,11 +1,12 @@
 import { router, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Keyboard, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, { cubicBezier, useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BrandColors, BrandFonts, NightColors } from '@/constants/theme';
+import { entrance } from '@/components/onboarding/motion';
 import { ProgressBar } from '@/components/onboarding/progress-bar';
 import { StarDust } from '@/components/onboarding/star-dust';
 import { loadProfileName, saveProfileGender } from '@/lib/profile';
@@ -13,8 +14,6 @@ import { GENDER_CHIPS, GENDERS, genderSlot, MAX_GENDER_WORDS_LENGTH, type Gender
 
 /** Onboarding has 5 steps; this is the third. */
 const STEPS = 5;
-/** Time to enjoy "noted ✦" before moving on. */
-const DONE_PAUSE_MS = 1400;
 
 const PLACEHOLDER_DASHES = 15;
 /** Chip springs up a little when picked (overshoots, then settles). */
@@ -55,14 +54,6 @@ export default function OnboardingGenderScreen() {
   const [gender, setGender] = useState<Gender | null>(null);
   const [ownWords, setOwnWords] = useState('');
   const [done, setDone] = useState(false);
-  const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (leaveTimer.current) clearTimeout(leaveTimer.current);
-    };
-  }, []);
-
   // Coming back from a later step: let them continue again.
   useFocusEffect(useCallback(() => setDone(false), []));
 
@@ -87,7 +78,7 @@ export default function OnboardingGenderScreen() {
     Keyboard.dismiss();
     setDone(true);
     saveProfileGender(gender, ownWords);
-    leaveTimer.current = setTimeout(() => router.push('/onboarding-frequency'), DONE_PAUSE_MS);
+    router.push('/onboarding-frequency');
   }
 
   function handleSkip() {
@@ -100,7 +91,7 @@ export default function OnboardingGenderScreen() {
   }
 
   function animate(style: object) {
-    return reduceMotion ? null : { animationFillMode: 'both' as const, ...style };
+    return entrance(reduceMotion, style);
   }
 
   const titleWords = [
@@ -254,11 +245,6 @@ export default function OnboardingGenderScreen() {
               />
             </Animated.View>
           )}
-
-          <Animated.Text
-            style={[styles.note, animate({ animationName: UP, animationDuration: 600, animationDelay: 2000, animationTimingFunction: 'ease' })]}>
-            only used to tailor how afterdream talks to you. change it anytime.
-          </Animated.Text>
         </View>
 
         <Animated.View
@@ -437,12 +423,6 @@ const styles = StyleSheet.create({
     fontFamily: BrandFonts.medium,
     fontSize: 17,
     color: NightColors.text,
-  },
-  note: {
-    fontFamily: BrandFonts.regular,
-    fontSize: 13,
-    lineHeight: 18,
-    color: NightColors.buttonOffText,
   },
   next: {
     height: 58,

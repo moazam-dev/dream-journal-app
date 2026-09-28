@@ -29,8 +29,6 @@ const PHASE_TIMES_MS = [150, 1000, 1500, 3000];
 const FINAL_PHASE = 4;
 /** How long the little hop lasts after accepting the terms. */
 const HOP_MS = 380;
-/** Time for the ghost to fly off before moving on. */
-const SIGN_IN_PAUSE_MS = 1100;
 
 const Ease = {
   flood: cubicBezier(0.65, 0, 0.35, 1),
@@ -54,7 +52,6 @@ export default function WelcomeScreen() {
   const [hop, setHop] = useState(false);
   const [signing, setSigning] = useState(false);
   const hopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (reduceMotion) return;
@@ -65,7 +62,6 @@ export default function WelcomeScreen() {
   useEffect(() => {
     return () => {
       if (hopTimer.current) clearTimeout(hopTimer.current);
-      if (leaveTimer.current) clearTimeout(leaveTimer.current);
     };
   }, []);
 
@@ -82,7 +78,7 @@ export default function WelcomeScreen() {
     setSigning(true);
     // There is no Sign in with Apple yet, so this goes straight to the "You're in" screen.
     // `replace` (not `push`) so "back" doesn't return here.
-    leaveTimer.current = setTimeout(() => router.replace('/welcome-in'), SIGN_IN_PAUSE_MS);
+    router.replace('/welcome-in');
   }
 
   const motion = reduceMotion ? 0 : 1;
@@ -159,14 +155,12 @@ export default function WelcomeScreen() {
             transitionTimingFunction: ['ease', Ease.rise],
           },
         ]}>
-        <Text style={styles.brand}>afterdream</Text>
-        <View style={styles.headline} accessibilityRole="header">
-          <Text style={styles.headlineText}>what did you</Text>
-          <View style={styles.pill}>
-            <Text style={[styles.headlineText, styles.pillText]}>dream</Text>
-          </View>
-          <Text style={styles.headlineText}>about?</Text>
-        </View>
+        <Text style={styles.brand} accessibilityRole="header" numberOfLines={1} adjustsFontSizeToFit>
+          afterdream
+        </Text>
+        <Text style={styles.tagline} numberOfLines={1}>
+          what did you dream about?
+        </Text>
       </Animated.View>
 
       <Animated.View
@@ -220,40 +214,26 @@ const styles = StyleSheet.create({
   },
   title: {
     position: 'absolute',
-    left: 28,
-    right: 28,
-    gap: 18,
+    left: 24,
+    right: 24,
+    alignItems: 'center',
+    gap: 4,
   },
   brand: {
     fontFamily: BrandFonts.semibold,
+    fontSize: 68,
+    lineHeight: 74,
+    letterSpacing: -3,
+    textAlign: 'center',
+    color: BrandColors.ink,
+  },
+  tagline: {
+    textAlign: 'center',
+    fontFamily: BrandFonts.regular,
     fontSize: 15,
+    lineHeight: 20,
     letterSpacing: -0.2,
     color: BrandColors.ink,
-  },
-  headline: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    rowGap: 4,
-    columnGap: 10,
-  },
-  headlineText: {
-    fontFamily: BrandFonts.medium,
-    fontSize: 44,
-    lineHeight: 46,
-    letterSpacing: -2,
-    color: BrandColors.ink,
-  },
-  pill: {
-    height: 50,
-    paddingHorizontal: 16,
-    paddingBottom: 4,
-    borderRadius: 26,
-    backgroundColor: BrandColors.ink,
-    justifyContent: 'center',
-  },
-  pillText: {
-    color: BrandColors.lime,
   },
   sheet: {
     position: 'absolute',

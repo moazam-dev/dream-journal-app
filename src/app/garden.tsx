@@ -7,7 +7,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { GardenPick, LostCounts } from '@/components/garden/garden-engine';
 import GardenScene, { type SceneCommand } from '@/components/garden/garden-scene';
-import { DemoCounter, GardenHeader, GardenToast, PickSheet, Planting, RulesSheet, StageBanner, WiltSheet } from '@/components/garden/parts';
+import { DemoCounter, GardenActions, GardenToast, PickSheet, Planting, RulesSheet, StageBanner, WiltSheet } from '@/components/garden/parts';
+import { BRAND_BAR_HEIGHT, BrandBar } from '@/components/today/brand-bar';
 import { ease } from '@/components/today/motion';
 import { openTab, TAB_BAR_HEIGHT, TabBar, type Tab } from '@/components/today/tab-bar';
 import { useDreams } from '@/hooks/use-dreams';
@@ -212,22 +213,19 @@ export default function GardenScreen() {
         </View>
       )}
 
-      <View style={[styles.fill, { top: insets.top + 6 }]}>
-        <GardenHeader
-          streak={demo ? demoDay : garden.streak}
-          demoPlaying={demo}
-          onDemo={playDemo}
-          onRules={() => setRules(true)}
-        />
+      <View style={[styles.fill, { top: insets.top }]}>
+        <BrandBar title="garden" streak={demo ? demoDay : garden.streak}>
+          <GardenActions demoPlaying={demo} onDemo={playDemo} onRules={() => setRules(true)} />
+        </BrandBar>
       </View>
 
       {pick && !demo && (
-        <View style={[styles.fill, { top: insets.top + 58 }]}>
+        <View style={[styles.fill, { top: insets.top + BRAND_BAR_HEIGHT + 6 }]}>
           <PickSheet card={pick} reduceMotion={reduceMotion} onClose={() => setPick(null)} onReread={reread} />
         </View>
       )}
       {demo && (
-        <View pointerEvents="none" style={[styles.fill, { top: insets.top + 58 }]}>
+        <View pointerEvents="none" style={[styles.fill, { top: insets.top + BRAND_BAR_HEIGHT + 6 }]}>
           <DemoCounter day={demoDay} reduceMotion={reduceMotion} />
         </View>
       )}

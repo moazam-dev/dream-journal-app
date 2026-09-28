@@ -258,13 +258,13 @@ const styles = StyleSheet.create({
   card: { borderRadius: 28, overflow: 'hidden' },
   darkCard: { backgroundColor: C.card, borderWidth: 1.5, borderColor: C.line },
   padded: { padding: 22, gap: 14 },
-  cardTitle: { fontFamily: F.serif, fontSize: 28, lineHeight: 30, color: C.cream },
+  cardTitle: { fontFamily: F.serif, fontSize: 28, lineHeight: 30, letterSpacing: -0.8, color: C.cream },
   overline: { fontFamily: F.sansSemibold, fontSize: 11, lineHeight: 13, letterSpacing: 1.6, textTransform: 'uppercase', color: C.mustard },
 
   rings: { height: 120, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   ring: { borderRadius: 999, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   threadText: { paddingTop: 4, paddingHorizontal: 22, paddingBottom: 26, gap: 10 },
-  threadTitle: { fontFamily: F.serif, fontSize: 32, lineHeight: 34, color: C.cream },
+  threadTitle: { fontFamily: F.serif, fontSize: 32, lineHeight: 34, letterSpacing: -0.8, color: C.cream },
   threadBody: { fontFamily: F.sans, fontSize: 14, lineHeight: 21, color: C.paperLine },
   readingRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   readingDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: C.mustard },
@@ -307,6 +307,6 @@ const styles = StyleSheet.create({
   hills: { height: 64, flexDirection: 'row', alignItems: 'flex-end', gap: 8, paddingHorizontal: 22 },
   hill: { width: 64, borderTopLeftRadius: 32, borderTopRightRadius: 32 },
   questionBody: { padding: 22, gap: 8, backgroundColor: C.sageLight },
-  questionTitle: { fontFamily: F.serif, fontSize: 30, lineHeight: 32, color: C.ink },
+  questionTitle: { fontFamily: F.serif, fontSize: 30, lineHeight: 32, letterSpacing: -0.8, color: C.ink },
   questionText: { fontFamily: F.sans, fontSize: 14, lineHeight: 20, color: C.ink },
 });

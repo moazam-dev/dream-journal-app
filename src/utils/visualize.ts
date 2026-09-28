@@ -28,6 +28,13 @@ export function pickPaintings(dreams: readonly Dream[], focusId?: string | null)
     .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
 }
 
+/** Dreams still to be painted, newest first: the list behind "visualize old dream". */
+export function unpaintedDreams(dreams: readonly Dream[]): Dream[] {
+  return dreams
+    .filter((dream) => !isPainted(dream) && dream.image_status !== 'generating')
+    .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+}
+
 /** The line under "this week". */
 export function visualizeIntro(paintings: readonly Dream[], now: Date): string {
   const painted = paintings.filter(isPainted);

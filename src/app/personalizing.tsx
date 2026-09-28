@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,8 +24,6 @@ import {
 
 /** How often the bars and the percent update. */
 const TICK_MS = 60;
-/** Time to enjoy "sweet dreams, …" before Home. */
-const DONE_PAUSE_MS = 1400;
 const BUTTON_HEIGHT = 58;
 const TRACK = 'rgba(255, 255, 255, 0.16)';
 
@@ -43,7 +41,6 @@ export default function PersonalizingScreen() {
   const name = useMemo(() => dreamerName(loadProfileName()), []);
   const [elapsed, setElapsed] = useState(0);
   const [entered, setEntered] = useState(false);
-  const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const start = Date.now();
@@ -52,10 +49,7 @@ export default function PersonalizingScreen() {
       setElapsed(now);
       if (now >= TOTAL_MS) clearInterval(timer);
     }, TICK_MS);
-    return () => {
-      clearInterval(timer);
-      if (leaveTimer.current) clearTimeout(leaveTimer.current);
-    };
+    return () => clearInterval(timer);
   }, []);
 
   // Onboarding is behind them: Android's back button does nothing here.
@@ -78,7 +72,7 @@ export default function PersonalizingScreen() {
   function handleEnter() {
     if (entered) return;
     setEntered(true);
-    leaveTimer.current = setTimeout(enterHome, DONE_PAUSE_MS);
+    enterHome();
   }
 
   // The design's button sits 40 pt from the bottom of a phone with a 34 pt home indicator.

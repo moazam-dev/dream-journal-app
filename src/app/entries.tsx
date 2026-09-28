@@ -170,7 +170,7 @@ export default function EntriesScreen() {
       <StatusBar style="light" />
 
       <View style={{ marginTop: insets.top }}>
-        <BrandBar streak={streak} />
+        <BrandBar title="entries" streak={streak} />
       </View>
 
       <ScrollView
@@ -178,12 +178,7 @@ export default function EntriesScreen() {
         style={[styles.scroll, { marginBottom: TAB_BAR_HEIGHT + tabBarBottom }]}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <Text style={styles.title} accessibilityRole="header">
-            entries
-          </Text>
-          <Text style={styles.stats}>{monthStats(dreams, now)}</Text>
-        </View>
+        <Text style={styles.stats}>{monthStats(dreams, now)}</Text>
 
         <EntryCalendar
           monthLabel={monthName(now)}
@@ -293,16 +288,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 30,
     gap: 22,
-  },
-  header: {
-    gap: 6,
-  },
-  title: {
-    fontFamily: BrandFonts.medium,
-    fontSize: 36,
-    lineHeight: 38,
-    letterSpacing: -1.4,
-    color: '#fff',
   },
   stats: {
     fontFamily: BrandFonts.regular,

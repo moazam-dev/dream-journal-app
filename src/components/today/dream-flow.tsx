@@ -3,27 +3,25 @@ import { useEffect, useEffectEvent, useRef, useState, type Dispatch, type SetSta
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
+import { AUDIO_BAR_HEIGHT, AudioBar } from '@/components/audio-bar';
 import { BrandColors, BrandFonts } from '@/constants/theme';
-import { useReflectionAudio } from '@/hooks/use-reflection-audio';
 import { analyzeDream, composeDreamFromFragments, createDream, updateDreamDetails } from '@/services/dreams';
 import type { Dream } from '@/types/dream';
 import { getErrorMessage } from '@/utils/errors';
 import {
   addTag,
-  formatClock,
   fragmentTurns,
   LOADING_LINES,
   MOOD_OPTIONS,
   resultDate,
   sameTags,
   SOURCE_LABELS,
-  WAVE_HEIGHTS,
   type DreamSource,
   type Fragment,
   type Turn,
 } from '@/utils/today';
 
-import { overline } from './card-overlay';
+import { DARK, overline } from './card-overlay';
 import { animate, ease, loop, ORB, rise, RING } from './motion';
 
 /** The loading orb stays at least this long, so it reads as a moment rather than a flicker. */
@@ -56,6 +54,7 @@ type Stage = { name: 'loading' } | { name: 'failed'; message: string } | { name:
  * What happens after a dream is written, said or talked through: it is saved to entries
  * straight away, read by the AI (a glowing orb while that happens), then shown in two tabs:
  * the transcript of how it was told, and the analysis, where they can add their own details.
+ * A white audio bar stays at the bottom of both, playing the reading aloud.
  */
 export function DreamFlow({ source, text, fragments, tab, reduceMotion, bottomInset, onReady, onVisualize, onDone, onToast }: DreamFlowProps) {
   const [dream, setDream] = useState<Dream | null>(null);
@@ -124,29 +123,36 @@ export function DreamFlow({ source, text, fragments, tab, reduceMotion, bottomIn
     );
   }
 
+  const footerBottom = Math.max(bottomInset, 16);
+
   return (
-    <ScrollView
-      key={tab}
-      contentContainerStyle={[styles.page, { paddingBottom: bottomInset + 36 }]}
-      showsVerticalScrollIndicator={false}
-      keyboardShouldPersistTaps="handled"
-      keyboardDismissMode="interactive"
-      automaticallyAdjustKeyboardInsets>
-      {tab === 'analysis' ? (
-        <Analysis dream={dream} setDream={setDream} reduceMotion={reduceMotion} onToast={onToast} />
-      ) : (
-        <Transcript source={source} fragments={fragments} dream={dream} reduceMotion={reduceMotion} />
-      )}
-      <Animated.View style={[styles.actions, rise(reduceMotion, 480)]}>
-        <Pressable accessibilityRole="button" onPress={() => onVisualize(dream.id)} style={({ pressed }) => [styles.primary, pressed && styles.pressed]}>
-          <Text style={styles.primaryText}>see it visualized</Text>
-          <Text style={styles.primaryText}>→</Text>
-        </Pressable>
-        <Pressable accessibilityRole="button" onPress={() => onDone(true)} style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}>
-          <Text style={styles.secondaryText}>back to today</Text>
-        </Pressable>
+    <View style={styles.flow}>
+      <ScrollView
+        key={tab}
+        contentContainerStyle={[styles.page, { paddingBottom: footerBottom + AUDIO_BAR_HEIGHT + 36 }]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        automaticallyAdjustKeyboardInsets>
+        {tab === 'analysis' ? (
+          <Analysis dream={dream} setDream={setDream} reduceMotion={reduceMotion} onToast={onToast} />
+        ) : (
+          <Transcript source={source} fragments={fragments} dream={dream} reduceMotion={reduceMotion} />
+        )}
+        <Animated.View style={[styles.actions, rise(reduceMotion, 480)]}>
+          <Pressable accessibilityRole="button" onPress={() => onVisualize(dream.id)} style={({ pressed }) => [styles.primary, pressed && styles.pressed]}>
+            <Text style={styles.primaryText}>see it visualized</Text>
+            <Text style={styles.primaryText}>→</Text>
+          </Pressable>
+          <Pressable accessibilityRole="button" onPress={() => onDone(true)} style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}>
+            <Text style={styles.secondaryText}>back to today</Text>
+          </Pressable>
+        </Animated.View>
+      </ScrollView>
+      <Animated.View pointerEvents="box-none" style={[styles.footer, { paddingBottom: footerBottom }, rise(reduceMotion, 320)]}>
+        <AudioBar dream={dream} setDream={setDream} reduceMotion={reduceMotion} />
       </Animated.View>
-    </ScrollView>
+    </View>
   );
 }
 
@@ -195,10 +201,6 @@ function Analysis({ dream, setDream, reduceMotion, onToast }: AnalysisProps) {
             </Text>
           ))}
         </View>
-      </Animated.View>
-
-      <Animated.View style={[styles.panel, rise(reduceMotion, 80)]}>
-        <ReflectionPlayer dream={dream} setDream={setDream} />
       </Animated.View>
 
       {(dream.summary || dream.reflection) && (
@@ -433,50 +435,22 @@ function Loading({ reduceMotion, piecing }: { reduceMotion: boolean; piecing: bo
   );
 }
 
-type ReflectionPlayerProps = {
-  dream: Dream;
-  setDream: Dispatch<SetStateAction<Dream | null>>;
-};
-
-/** "listen to your reflection": the reflection read aloud (made on the server the first time). */
-function ReflectionPlayer({ dream, setDream }: ReflectionPlayerProps) {
-  const audio = useReflectionAudio(dream, setDream);
-  const busy = audio.generating || audio.loading;
-  const progress = audio.duration > 0 ? audio.position / audio.duration : 0;
-
-  let time = '';
-  if (audio.duration > 0) time = audio.hasStarted || audio.playing ? `${formatClock(audio.position)} / ${formatClock(audio.duration)}` : formatClock(audio.duration);
-
-  return (
-    <View style={styles.player}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={audio.playing ? 'Pause reflection' : 'Play reflection'}
-        accessibilityState={{ busy }}
-        disabled={busy}
-        onPress={audio.playing ? audio.pause : audio.play}
-        style={({ pressed }) => [styles.play, pressed && styles.pressed]}>
-        <Text style={styles.playGlyph}>{busy ? '…' : audio.playing ? '❚❚' : '▶'}</Text>
-      </Pressable>
-      <View style={styles.playerMiddle}>
-        <Text style={styles.playerLabel} numberOfLines={2}>
-          {audio.error ?? (audio.generating ? 'finding the right voice…' : 'listen to your reflection')}
-        </Text>
-        <View style={styles.wave}>
-          {WAVE_HEIGHTS.map((height, i) => (
-            <View key={i} style={[styles.waveBar, { height, backgroundColor: i / WAVE_HEIGHTS.length < progress ? BrandColors.lime : 'rgba(255, 255, 255, 0.22)' }]} />
-          ))}
-        </View>
-      </View>
-      {!!time && <Text style={styles.time}>{time}</Text>}
-    </View>
-  );
-}
-
 const SURFACE = 'rgba(255, 255, 255, 0.06)';
 const LINE = 'rgba(255, 255, 255, 0.09)';
 
 const styles = StyleSheet.create({
+  flow: {
+    flex: 1,
+  },
+  footer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingTop: 28,
+    paddingHorizontal: 18,
+    experimental_backgroundImage: `linear-gradient(180deg, rgba(11, 11, 11, 0), ${DARK} 45%)`,
+  },
   loading: {
     flex: 1,
     alignItems: 'center',
@@ -868,50 +842,5 @@ const styles = StyleSheet.create({
   },
   pressed: {
     transform: [{ scale: 0.97 }],
-  },
-  player: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-  },
-  play: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  playGlyph: {
-    fontFamily: BrandFonts.semibold,
-    fontSize: 15,
-    lineHeight: 18,
-    color: '#111',
-  },
-  playerMiddle: {
-    flex: 1,
-    gap: 8,
-  },
-  playerLabel: {
-    fontFamily: BrandFonts.medium,
-    fontSize: 14,
-    lineHeight: 17,
-    color: '#fff',
-  },
-  wave: {
-    height: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  waveBar: {
-    flex: 1,
-    borderRadius: 1,
-  },
-  time: {
-    fontFamily: BrandFonts.medium,
-    fontSize: 12,
-    lineHeight: 15,
-    color: 'rgba(255, 255, 255, 0.7)',
   },
 });

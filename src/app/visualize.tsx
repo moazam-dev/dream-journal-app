@@ -1,32 +1,38 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useMemo, useRef, useState, type SetStateAction } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type SetStateAction } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Animated, { useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Path } from 'react-native-svg';
 
 import { BrandBar } from '@/components/today/brand-bar';
 import { animate, FADE, TOAST } from '@/components/today/motion';
 import { openTab, TAB_BAR_HEIGHT, TabBar, type Tab } from '@/components/today/tab-bar';
+import { AddMenu } from '@/components/visualize/add-menu';
+import { OldDreamSheet } from '@/components/visualize/old-dream-sheet';
 import { COLUMN_WIDTH, CREAM, NextDream, Painting } from '@/components/visualize/painting';
 import { BrandFonts } from '@/constants/theme';
 import { useDreams } from '@/hooks/use-dreams';
+import { analyzeDream } from '@/services/dreams';
 import type { Dream } from '@/types/dream';
+import { getErrorMessage } from '@/utils/errors';
 import { currentStreak } from '@/utils/garden';
-import { pickPaintings, visualizeIntro } from '@/utils/visualize';
+import { pickPaintings, unpaintedDreams, visualizeIntro } from '@/utils/visualize';
 
 const TOAST_MS = 2200;
 /** A column, the gap either side of the divider, and the divider itself. */
 const DIVIDER_GAP = 24;
 const STEP = COLUMN_WIDTH + DIVIDER_GAP * 2 + 1;
+/** How far the divider runs on below its picture. */
+const DIVIDER_TAIL = 20;
 /** The design's 844 pt tall phone: the big gaps shrink on shorter ones. */
 const DESIGN_HEIGHT = 844;
 
 /**
  * Visualize ("/visualize"), from the Afterdream Visualize (simple) design: every dream
  * painted so far, side by side, newest first, to swipe back through. Tapping a painting
- * shows it full screen; the last column and "+" go to Today to tell a new one.
+ * shows it full screen; the last column goes to Today to tell a new one. "+" offers both:
+ * yap a new dream on Today, or pick an old dream that isn't painted yet and paint it here.
  *
  * `?id=<dream id>` adds that dream if it isn't painted yet, paints it, and scrolls to it.
  */
@@ -42,6 +48,8 @@ export default function VisualizeScreen() {
   const [changed, setChanged] = useState<Record<string, Dream>>({});
   const [galleryHeight, setGalleryHeight] = useState(0);
   const [toast, setToast] = useState<{ id: number; text: string } | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gallery = useRef<ScrollView>(null);
   const scrolledTo = useRef<string | null>(null);
@@ -56,6 +64,7 @@ export default function VisualizeScreen() {
   const dreams = useMemo(() => loaded.map((dream) => changed[dream.id] ?? dream), [loaded, changed]);
   const paintings = useMemo(() => pickPaintings(dreams, id), [dreams, id]);
   const streak = useMemo(() => currentStreak(dreams, now), [dreams, now]);
+  const oldDreams = useMemo(() => unpaintedDreams(dreams), [dreams]);
 
   const tabBarBottom = Math.max(insets.bottom, 8);
   const squeeze = Math.min(1, height / DESIGN_HEIGHT);
@@ -91,6 +100,37 @@ export default function VisualizeScreen() {
     openTab('today', 'visualize');
   }
 
+  const toggleMenu = useCallback(() => setMenuOpen((open) => !open), []);
+  const closePicker = useCallback(() => setPickerOpen(false), []);
+
+  function yap() {
+    setMenuOpen(false);
+    tellNew();
+  }
+
+  function chooseOldDream() {
+    setMenuOpen(false);
+    setPickerOpen(true);
+  }
+
+  /** Paints a dream from the list here: reads it first if needed, since the picture comes from the reading. */
+  async function visualizeOld(dream: Dream) {
+    setPickerOpen(false);
+    if (dream.analysis_status !== 'completed') {
+      showToast('reading it first…');
+      try {
+        change(dream.id, await analyzeDream(dream.id));
+      } catch (err) {
+        console.warn('Could not read the dream', getErrorMessage(err));
+        showToast('couldn’t read it — try again');
+        return;
+      }
+    }
+    // A picture that failed before gets another go.
+    if (dream.image_status === 'failed') change(dream.id, (current) => (current ? { ...current, image_status: 'pending' } : current));
+    router.setParams({ id: dream.id });
+  }
+
   function pickTab(tab: Tab) {
     if (!openTab(tab, 'visualize')) showToast(`${tab} is coming soon ✦`);
   }
@@ -100,13 +140,9 @@ export default function VisualizeScreen() {
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       <StatusBar style="light" />
-      <BrandBar streak={streak} />
+      <BrandBar title="visualize" streak={streak} />
 
-      <Text style={styles.title} accessibilityRole="header">
-        visualize
-      </Text>
-
-      <View style={[styles.intro, { marginTop: 86 * squeeze }]}>
+      <View style={[styles.intro, { marginTop: 48 * squeeze }]}>
         <Text style={styles.introTitle}>{error && loaded.length === 0 ? 'couldn’t reach your dreams.' : 'this week'}</Text>
         {intro === null ? (
           <Animated.Text style={[styles.introText, animate(reduceMotion, { animationName: FADE, animationDuration: 600, animationDelay: 300 })]}>
@@ -135,35 +171,29 @@ export default function VisualizeScreen() {
             contentContainerStyle={styles.gallery}>
             {paintings.map((dream) => (
               <View key={dream.id} style={styles.slot}>
-                <Painting
-                  dream={dream}
-                  height={galleryHeight}
-                  size={pictureSize}
-                  reduceMotion={reduceMotion}
-                  onChange={change}
-                  onOpen={openPainting}
-                />
+                <View style={styles.tail}>
+                  <Painting dream={dream} size={pictureSize} reduceMotion={reduceMotion} onChange={change} onOpen={openPainting} />
+                </View>
                 <View style={styles.divider} />
               </View>
             ))}
-            <NextDream height={galleryHeight} size={pictureSize} onPress={tellNew} />
+            <NextDream size={pictureSize} onPress={tellNew} />
           </ScrollView>
         )}
       </View>
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Visualize a new dream"
-        onPress={tellNew}
-        style={({ pressed }) => [styles.add, { bottom: TAB_BAR_HEIGHT + tabBarBottom + 24 }, pressed && styles.addPressed]}>
-        <Svg width={22} height={22} viewBox="0 0 22 22">
-          <Path d="M11 3v16M3 11h16" stroke="#111" strokeWidth={2.6} strokeLinecap="round" />
-        </Svg>
-      </Pressable>
-
       <View style={styles.tabBar}>
         <TabBar current="visualize" bottomInset={tabBarBottom} onPick={pickTab} />
       </View>
+
+      <AddMenu
+        open={menuOpen}
+        bottom={TAB_BAR_HEIGHT + tabBarBottom + 24}
+        reduceMotion={reduceMotion}
+        onToggle={toggleMenu}
+        onYap={yap}
+        onOldDream={chooseOldDream}
+      />
 
       {toast && (
         <View pointerEvents="none" style={[styles.toastRow, { bottom: TAB_BAR_HEIGHT + tabBarBottom + 100 }]}>
@@ -175,6 +205,16 @@ export default function VisualizeScreen() {
           </Animated.Text>
         </View>
       )}
+
+      <OldDreamSheet
+        dreams={oldDreams}
+        open={pickerOpen}
+        maxListHeight={height * 0.5}
+        bottomInset={insets.bottom}
+        reduceMotion={reduceMotion}
+        onClose={closePicker}
+        onPick={visualizeOld}
+      />
     </View>
   );
 }
@@ -183,15 +223,6 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: '#000',
-  },
-  title: {
-    marginTop: 14,
-    paddingHorizontal: 20,
-    fontFamily: BrandFonts.light,
-    fontSize: 58,
-    lineHeight: 60,
-    letterSpacing: -2,
-    color: '#bdbdbd',
   },
   intro: {
     paddingHorizontal: 20,
@@ -234,29 +265,19 @@ const styles = StyleSheet.create({
   gallery: {
     paddingHorizontal: 20,
   },
+  // As tall as its painting (plus the tail), so the divider stops just below the picture.
   slot: {
     flexDirection: 'row',
+    alignSelf: 'flex-start',
+  },
+  tail: {
+    paddingBottom: DIVIDER_TAIL,
   },
   divider: {
     width: 1,
     marginHorizontal: DIVIDER_GAP,
     backgroundColor: CREAM,
     opacity: 0.8,
-  },
-  add: {
-    position: 'absolute',
-    right: 20,
-    zIndex: 4,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#EDEDED',
-    boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
-  },
-  addPressed: {
-    transform: [{ scale: 0.94 }],
   },
   tabBar: {
     position: 'absolute',

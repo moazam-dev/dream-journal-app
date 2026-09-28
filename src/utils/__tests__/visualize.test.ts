@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import type { Dream } from '../../types/dream.ts';
-import { cardMeta, dreamMood, pickPaintings, visualizeIntro } from '../visualize.ts';
+import { cardMeta, dreamMood, pickPaintings, unpaintedDreams, visualizeIntro } from '../visualize.ts';
 
 type Paint = Pick<Dream, 'image_status' | 'image_url' | 'analysis_status'>;
 
@@ -62,6 +62,20 @@ describe('pickPaintings', () => {
     assert.deepEqual(
       pickPaintings([a, e], 'e').map((x) => x.id),
       ['a']
+    );
+  });
+});
+
+describe('unpaintedDreams', () => {
+  it('lists every dream not painted or being painted, newest first, read or not', () => {
+    const a = dream('a', new Date(2026, 8, 27), painted);
+    const b = dream('b', new Date(2026, 8, 26), { image_status: 'generating' });
+    const c = dream('c', new Date(2026, 8, 25));
+    const d = dream('d', new Date(2026, 8, 24), { image_status: 'failed' });
+    const e = dream('e', new Date(2026, 8, 28), { analysis_status: 'pending' });
+    assert.deepEqual(
+      unpaintedDreams([c, d, a, b, e]).map((x) => x.id),
+      ['e', 'c', 'd']
     );
   });
 });

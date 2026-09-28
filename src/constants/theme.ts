@@ -47,8 +47,6 @@ export const NightColors = {
   /** Small "continue" button before anything is typed. */
   pillOff: '#1A1A1A',
   pillOffText: '#555555',
-  /** Thin lime horizon line above the keyboard. */
-  horizon: 'rgba(226, 235, 152, 0.5)',
 } as const;
 
 /** Bricolage Grotesque, loaded in the root layout. Use as `fontFamily`. */
@@ -59,18 +57,21 @@ export const BrandFonts = {
   semibold: 'BricolageGrotesque_600SemiBold',
 } as const;
 
-/** Instrument Serif and Sans (the Patterns design), loaded in the root layout. */
+/**
+ * Patterns' type roles (from the Patterns design), set in Bricolage Grotesque so Patterns
+ * reads like the other tabs. "serif" is the display face for card headlines and numbers.
+ */
 export const PatternFonts = {
-  serif: 'InstrumentSerif_400Regular',
-  serifItalic: 'InstrumentSerif_400Regular_Italic',
-  sans: 'InstrumentSans_400Regular',
-  sansMedium: 'InstrumentSans_500Medium',
-  sansSemibold: 'InstrumentSans_600SemiBold',
+  serif: BrandFonts.regular,
+  serifItalic: BrandFonts.light,
+  sans: BrandFonts.regular,
+  sansMedium: BrandFonts.medium,
+  sansSemibold: BrandFonts.semibold,
 } as const;
 
-/** Warm night palette from the Afterdream Patterns design. */
+/** Warm night palette from the Afterdream Patterns design, on the black the other tabs use. */
 export const PatternColors = {
-  background: '#0F0E0D',
+  background: '#000000',
   card: '#1C1A17',
   line: '#2E2B26',
   cream: '#F3EEE4',

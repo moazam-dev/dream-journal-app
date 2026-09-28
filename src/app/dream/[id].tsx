@@ -6,6 +6,7 @@ import Animated, { useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
+import { AUDIO_BAR_HEIGHT, AudioBar } from '@/components/audio-bar';
 import { DreamAnalysis } from '@/components/dream/dream-analysis';
 import { animate, EASE_OUT, FADE, TOAST } from '@/components/today/motion';
 import { BrandColors, BrandFonts } from '@/constants/theme';
@@ -19,12 +20,16 @@ import { dreamMood } from '@/utils/visualize';
 type DreamTab = 'transcript' | 'analysis';
 
 const TOAST_MS = 2600;
+const VISUALIZE_HEIGHT = 56;
+/** Between the audio bar and "visualize". */
+const FOOTER_GAP = 10;
 
 /**
  * A dream's page ("/dream/<id>"), opened from its row on Entries: the dream in its card
  * colour, then two tabs — the transcript as it was told, and afterdream's analysis.
  * "visualize" at the bottom shows its picture full screen, painting it if needed (and
- * reading it first, since the picture is painted from the reading).
+ * reading it first, since the picture is painted from the reading). Once it's been read,
+ * a white audio bar above "visualize" plays the reading aloud.
  */
 export default function DreamScreen() {
   const { id, tab } = useLocalSearchParams<{ id: string; tab?: DreamTab }>();
@@ -113,6 +118,8 @@ export default function DreamScreen() {
   }
 
   const state = analysisState(dream, reading);
+  // Room under the scroll for the footer: "visualize", and the audio bar once there's a reading.
+  const footerHeight = VISUALIZE_HEIGHT + (state === 'ready' ? AUDIO_BAR_HEIGHT + FOOTER_GAP : 0);
   const mood = dreamMood(dream);
   const people = dream.people ?? [];
   const places = dream.places ?? [];
@@ -127,7 +134,7 @@ export default function DreamScreen() {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[styles.content, { paddingBottom: footerBottom + 56 + 40 }]}
+        contentContainerStyle={[styles.content, { paddingBottom: footerBottom + footerHeight + 40 }]}
         stickyHeaderIndices={[1]}
         showsVerticalScrollIndicator={false}>
         <View style={[styles.hero, colorFill(dreamColor(dream))]}>
@@ -177,6 +184,7 @@ export default function DreamScreen() {
       </ScrollView>
 
       <View pointerEvents="box-none" style={[styles.footer, { paddingBottom: footerBottom }]}>
+        {state === 'ready' && <AudioBar dream={dream} setDream={setDream} reduceMotion={reduceMotion} />}
         <Pressable
           accessibilityRole="button"
           accessibilityState={{ busy: reading, disabled: reading }}
@@ -192,7 +200,7 @@ export default function DreamScreen() {
       </View>
 
       {toast && (
-        <View pointerEvents="none" style={[styles.toastRow, { bottom: footerBottom + 56 + 16 }]}>
+        <View pointerEvents="none" style={[styles.toastRow, { bottom: footerBottom + footerHeight + 16 }]}>
           <Animated.Text
             key={toast.id}
             accessibilityLiveRegion="polite"
@@ -416,11 +424,12 @@ const styles = StyleSheet.create({
     bottom: 0,
     paddingTop: 28,
     paddingHorizontal: 20,
+    gap: FOOTER_GAP,
     experimental_backgroundImage: 'linear-gradient(180deg, rgba(0,0,0,0), #000 45%)',
   },
   visualize: {
-    height: 56,
-    borderRadius: 28,
+    height: VISUALIZE_HEIGHT,
+    borderRadius: VISUALIZE_HEIGHT / 2,
     backgroundColor: BrandColors.lime,
     flexDirection: 'row',
     alignItems: 'center',

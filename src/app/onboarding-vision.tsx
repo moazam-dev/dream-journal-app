@@ -1,20 +1,19 @@
 import { router, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { cubicBezier, useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BrandColors, BrandFonts, NightColors } from '@/constants/theme';
 import { GoalShape } from '@/components/onboarding/goal-shape';
+import { entrance } from '@/components/onboarding/motion';
 import { ProgressBar } from '@/components/onboarding/progress-bar';
 import { saveProfileGoals } from '@/lib/profile';
 import { GOAL_TILES, GOALS, goalsSubtitle, toggleGoal, type Goal } from '@/utils/goals';
 
 /** Onboarding has 5 steps; this is the last. */
 const STEPS = 5;
-/** Time to enjoy "let's dream ✦" before moving on. */
-const DONE_PAUSE_MS = 1400;
 /** Tiles show two to a row. */
 const ROWS = [GOALS.slice(0, 2), GOALS.slice(2, 4), GOALS.slice(4, 6)];
 
@@ -62,15 +61,6 @@ export default function OnboardingVisionScreen() {
 
   const [picked, setPicked] = useState<Goal[]>([]);
   const [done, setDone] = useState(false);
-  const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const cancelLeave = useCallback(() => {
-    if (leaveTimer.current) clearTimeout(leaveTimer.current);
-    leaveTimer.current = null;
-  }, []);
-
-  useEffect(() => cancelLeave, [cancelLeave]);
-
   // Coming back to this screen: let them finish again.
   useFocusEffect(useCallback(() => setDone(false), []));
 
@@ -79,8 +69,6 @@ export default function OnboardingVisionScreen() {
   const colorFade = { transitionProperty: 'color', transitionDuration: reduceMotion ? 0 : 350, transitionTimingFunction: 'ease' } as const;
 
   function handleToggle(goal: Goal) {
-    // Changing their mind during the "let's dream" pause: stay here.
-    cancelLeave();
     setDone(false);
     setPicked((current) => toggleGoal(current, goal));
   }
@@ -89,11 +77,10 @@ export default function OnboardingVisionScreen() {
     if (!count || done) return;
     setDone(true);
     saveProfileGoals(picked);
-    leaveTimer.current = setTimeout(leaveOnboarding, DONE_PAUSE_MS);
+    leaveOnboarding();
   }
 
   function handleSkip() {
-    cancelLeave();
     leaveOnboarding();
   }
 
@@ -103,7 +90,7 @@ export default function OnboardingVisionScreen() {
   }
 
   function animate(style: object) {
-    return reduceMotion ? null : { animationFillMode: 'both' as const, ...style };
+    return entrance(reduceMotion, style);
   }
 
   return (

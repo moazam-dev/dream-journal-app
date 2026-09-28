@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,8 +21,6 @@ const SLIDES_GAP = 53;
  * Whatever is left over is shared by the hero and its gaps.
  */
 const FIXED_HEIGHT = 306;
-/** Pause on "Signing in…" before moving on. */
-const SIGN_IN_PAUSE_MS = 650;
 
 /**
  * Agreement screen ("/agreement"), shown after the welcome screen, from the
@@ -37,20 +35,12 @@ export default function AgreementScreen() {
 
   const [agreed, setAgreed] = useState(false);
   const [signing, setSigning] = useState(false);
-  const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (leaveTimer.current) clearTimeout(leaveTimer.current);
-    };
-  }, []);
-
   function handleContinue() {
     if (!agreed) return;
     setSigning(true);
     // There is no Sign in with Apple yet, so this goes straight to the "You're in" screen.
     // `replace` (not `push`) so "back" doesn't return here.
-    leaveTimer.current = setTimeout(() => router.replace('/welcome-in'), SIGN_IN_PAUSE_MS);
+    router.replace('/welcome-in');
   }
 
   // Shrink the hero on short phones so the slides never run into the button.

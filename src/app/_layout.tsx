@@ -5,8 +5,6 @@ import {
   BricolageGrotesque_600SemiBold,
   useFonts,
 } from '@expo-google-fonts/bricolage-grotesque';
-import { InstrumentSans_400Regular, InstrumentSans_500Medium, InstrumentSans_600SemiBold } from '@expo-google-fonts/instrument-sans';
-import { InstrumentSerif_400Regular, InstrumentSerif_400Regular_Italic } from '@expo-google-fonts/instrument-serif';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -14,6 +12,9 @@ import { useEffect } from 'react';
 
 import { BrandColors, Colors, NightColors, PatternColors, SettingsColors, VoiceColors } from '@/constants/theme';
 import { PERSONALIZING_BACKGROUND } from '@/utils/personalize';
+
+/** Sign-in and onboarding screens swap with a quick fade (iOS; Android uses its own). */
+const QUICK_FADE_MS = 200;
 
 // Keep the splash screen up until the brand font has loaded (avoids a flash of the wrong font).
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -28,11 +29,6 @@ export default function RootLayout() {
     BricolageGrotesque_400Regular,
     BricolageGrotesque_500Medium,
     BricolageGrotesque_600SemiBold,
-    InstrumentSans_400Regular,
-    InstrumentSans_500Medium,
-    InstrumentSans_600SemiBold,
-    InstrumentSerif_400Regular,
-    InstrumentSerif_400Regular_Italic,
   });
   const ready = fontsLoaded || !!fontError; // if the font fails, carry on with the system font
 
@@ -59,36 +55,36 @@ export default function RootLayout() {
         />
         <Stack.Screen
           name="agreement"
-          options={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: NightColors.background } }}
+          options={{ headerShown: false, animation: 'fade', animationDuration: QUICK_FADE_MS, contentStyle: { backgroundColor: NightColors.background } }}
         />
         <Stack.Screen
           name="welcome-in"
-          options={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: NightColors.background } }}
+          options={{ headerShown: false, animation: 'fade', animationDuration: QUICK_FADE_MS, contentStyle: { backgroundColor: NightColors.background } }}
         />
         <Stack.Screen
           name="onboarding-name"
-          options={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: NightColors.background } }}
+          options={{ headerShown: false, animation: 'fade', animationDuration: QUICK_FADE_MS, contentStyle: { backgroundColor: NightColors.background } }}
         />
         <Stack.Screen
           name="onboarding-birthday"
-          options={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: NightColors.background } }}
+          options={{ headerShown: false, animation: 'fade', animationDuration: QUICK_FADE_MS, contentStyle: { backgroundColor: NightColors.background } }}
         />
         <Stack.Screen
           name="onboarding-gender"
-          options={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: NightColors.background } }}
+          options={{ headerShown: false, animation: 'fade', animationDuration: QUICK_FADE_MS, contentStyle: { backgroundColor: NightColors.background } }}
         />
         <Stack.Screen
           name="onboarding-frequency"
-          options={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: NightColors.background } }}
+          options={{ headerShown: false, animation: 'fade', animationDuration: QUICK_FADE_MS, contentStyle: { backgroundColor: NightColors.background } }}
         />
         <Stack.Screen
           name="onboarding-vision"
-          options={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: NightColors.background } }}
+          options={{ headerShown: false, animation: 'fade', animationDuration: QUICK_FADE_MS, contentStyle: { backgroundColor: NightColors.background } }}
         />
         {/* No swiping back into onboarding once it's done. */}
         <Stack.Screen
           name="personalizing"
-          options={{ headerShown: false, animation: 'fade', gestureEnabled: false, contentStyle: { backgroundColor: PERSONALIZING_BACKGROUND } }}
+          options={{ headerShown: false, animation: 'fade', animationDuration: QUICK_FADE_MS, gestureEnabled: false, contentStyle: { backgroundColor: PERSONALIZING_BACKGROUND } }}
         />
         {/* The Today feed: black, full screen, with its own tab bar. */}
         <Stack.Screen
