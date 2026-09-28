@@ -59,6 +59,31 @@ export const BrandFonts = {
   semibold: 'BricolageGrotesque_600SemiBold',
 } as const;
 
+/** Black palette from the Afterdream Settings design. */
+export const SettingsColors = {
+  background: '#000000',
+  text: '#FFFFFF',
+  soft: 'rgba(255, 255, 255, 0.78)',
+  muted: 'rgba(255, 255, 255, 0.55)',
+  line: '#262626',
+  /** Round back button and keypad keys. */
+  button: '#1F1F1F',
+  card: '#1A1A1A',
+  /** Unselected chips and switches that are off. */
+  chip: '#2A2A2A',
+  input: '#0D0D0D',
+  border: '#333333',
+  borderSoft: '#3A3A3A',
+  lime: '#E2EB98',
+  light: '#E4E4E4',
+  ink: '#111111',
+  violet: '#2B1B5A',
+  lilac: '#C9B8F2',
+  orange: '#FF7A35',
+  forest: '#14301C',
+  sky: '#A8D8F0',
+} as const;
+
 /** Dark, calm palette used only by the voice companion screen. */
 export const VoiceColors = {
   background: '#0D0B1E',

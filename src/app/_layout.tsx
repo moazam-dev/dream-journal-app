@@ -10,7 +10,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
-import { BrandColors, Colors, NightColors, VoiceColors } from '@/constants/theme';
+import { BrandColors, Colors, NightColors, SettingsColors, VoiceColors } from '@/constants/theme';
 import { PERSONALIZING_BACKGROUND } from '@/utils/personalize';
 
 // Keep the splash screen up until the brand font has loaded (avoids a flash of the wrong font).
@@ -103,6 +103,8 @@ export default function RootLayout() {
           name="patterns"
           options={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: '#000000' } }}
         />
+        {/* Settings, opened from the cog on Patterns: black, with its own back button. */}
+        <Stack.Screen name="settings" options={{ headerShown: false, contentStyle: { backgroundColor: SettingsColors.background } }} />
         <Stack.Screen name="record" options={{ title: 'New Dream' }} />
         <Stack.Screen name="history" options={{ title: 'Dream History' }} />
         {/* One dream: its transcript and analysis, with a way into Visualize. */}
