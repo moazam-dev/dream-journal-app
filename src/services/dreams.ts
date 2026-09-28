@@ -57,6 +57,30 @@ export async function updateDreamDetails(dreamId: string, details: DreamDetails)
   return data;
 }
 
+/** Saves the card colour picked on the Entries screen, and returns the updated dream. */
+export async function updateDreamColor(dreamId: string, color: string): Promise<Dream> {
+  const { data, error } = await supabase
+    .from('dreams')
+    .update({ color })
+    .eq('id', dreamId)
+    .select()
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  // No row back means the database didn't allow the change (the colour migration isn't applied).
+  if (!data) throw new Error('The colour couldn’t be saved yet. Please try again later.');
+  return data;
+}
+
+/** Deletes a dream for good. */
+export async function deleteDream(dreamId: string): Promise<void> {
+  const { data, error } = await supabase.from('dreams').delete().eq('id', dreamId).select('id');
+
+  if (error) throw new Error(error.message);
+  // Nothing deleted means the database didn't allow it (the delete migration isn't applied).
+  if (!data?.length) throw new Error('The dream couldn’t be deleted yet. Please try again later.');
+}
+
 /**
  * Asks the `analyze-dream` Edge Function (server side) to create the AI reflection.
  * The function calls Groq, saves the result on the dream, and returns the updated dream.

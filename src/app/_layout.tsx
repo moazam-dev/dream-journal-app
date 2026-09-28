@@ -94,7 +94,7 @@ export default function RootLayout() {
         {/* Every dream told, under a night sky, with the same tab bar as home. */}
         <Stack.Screen
           name="entries"
-          options={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: '#050508' } }}
+          options={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: '#000' } }}
         />
         {/* What keeps coming back across the dreams, with the same tab bar as home. */}
         <Stack.Screen

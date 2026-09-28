@@ -39,6 +39,10 @@ export type Dream = {
   user_mood?: string | null;
   people?: string[];
   places?: string[];
+
+  // Card colour picked on the Entries screen (one of DREAM_COLORS in utils/entries).
+  // Missing or null means the colour comes from the mood.
+  color?: string | null;
 };
 
 /** The parts of a dream the dreamer can change. */
