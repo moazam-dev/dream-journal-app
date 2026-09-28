@@ -53,6 +53,7 @@ export const NightColors = {
 
 /** Bricolage Grotesque, loaded in the root layout. Use as `fontFamily`. */
 export const BrandFonts = {
+  light: 'BricolageGrotesque_300Light',
   regular: 'BricolageGrotesque_400Regular',
   medium: 'BricolageGrotesque_500Medium',
   semibold: 'BricolageGrotesque_600SemiBold',

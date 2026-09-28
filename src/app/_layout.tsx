@@ -1,4 +1,5 @@
 import {
+  BricolageGrotesque_300Light,
   BricolageGrotesque_400Regular,
   BricolageGrotesque_500Medium,
   BricolageGrotesque_600SemiBold,
@@ -21,6 +22,7 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
  */
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
+    BricolageGrotesque_300Light,
     BricolageGrotesque_400Regular,
     BricolageGrotesque_500Medium,
     BricolageGrotesque_600SemiBold,
@@ -86,7 +88,7 @@ export default function RootLayout() {
           name="home"
           options={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: '#000000' } }}
         />
-        {/* Dreams as full-screen pictures: black, with the same tab bar as home. */}
+        {/* The dreams painted so far, side by side: black, with the same tab bar as home. */}
         <Stack.Screen
           name="visualize"
           options={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: '#000000' } }}
@@ -105,6 +107,8 @@ export default function RootLayout() {
         <Stack.Screen name="history" options={{ title: 'Dream History' }} />
         {/* One dream: its transcript and analysis, with a way into Visualize. */}
         <Stack.Screen name="dream/[id]" options={{ headerShown: false, contentStyle: { backgroundColor: '#000' } }} />
+        {/* One dream's picture, full screen, with its title over the bottom. */}
+        <Stack.Screen name="painting/[id]" options={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: '#000' } }} />
         {/* Full-screen, dark voice companion with its own header. */}
         <Stack.Screen
           name="voice"

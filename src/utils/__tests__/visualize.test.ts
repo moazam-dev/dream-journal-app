@@ -3,77 +3,31 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import type { Dream } from '../../types/dream.ts';
-import { dreamDay, dreamMood, dustWords, pickDreams, seedFor, spokenText, visualizeTiming, wrapIndex } from '../visualize.ts';
+import { cardMeta, dreamMood, pickPaintings, visualizeIntro } from '../visualize.ts';
 
-function dream(id: string, status: Dream['analysis_status'] = 'completed'): Dream {
+type Paint = Pick<Dream, 'image_status' | 'image_url' | 'analysis_status'>;
+
+function dream(id: string, told: Date, paint: Partial<Paint> = {}): Dream {
   return {
     id,
     dream_text: `dream ${id}`,
-    created_at: '2026-09-27T07:00:00Z',
+    created_at: told.toISOString(),
     title: null,
     summary: null,
     mood: null,
     themes: null,
     reflection: null,
-    analysis_status: status,
+    analysis_status: 'completed',
     image_url: null,
     image_status: 'pending',
     audio_url: null,
     audio_status: 'pending',
+    ...paint,
   };
 }
 
-describe('wrapIndex', () => {
-  it('wraps past both ends', () => {
-    assert.equal(wrapIndex(7, 7), 0);
-    assert.equal(wrapIndex(-1, 7), 6);
-    assert.equal(wrapIndex(3, 7), 3);
-  });
-
-  it('is 0 for an empty list', () => {
-    assert.equal(wrapIndex(4, 0), 0);
-  });
-});
-
-describe('pickDreams', () => {
-  it('keeps only dreams with a finished reflection, newest first, up to the max', () => {
-    const all = [dream('a'), dream('b', 'pending'), dream('c'), dream('d', 'failed'), dream('e')];
-    const { list, start } = pickDreams(all, null, 2);
-    assert.deepEqual(list.map((d) => d.id), ['a', 'c']);
-    assert.equal(start, 0);
-  });
-
-  it('starts at the focused dream', () => {
-    const { list, start } = pickDreams([dream('a'), dream('b'), dream('c')], 'b');
-    assert.equal(list[start].id, 'b');
-  });
-
-  it('adds an older focused dream in place of the last one', () => {
-    const all = [dream('a'), dream('b'), dream('c'), dream('d')];
-    const { list, start } = pickDreams(all, 'd', 3);
-    assert.deepEqual(list.map((d) => d.id), ['a', 'b', 'd']);
-    assert.equal(start, 2);
-  });
-
-  it('ignores an unknown or unfinished focus', () => {
-    assert.equal(pickDreams([dream('a'), dream('b', 'pending')], 'b').start, 0);
-    assert.equal(pickDreams([dream('a')], 'zzz').start, 0);
-  });
-});
-
-describe('dreamDay', () => {
-  const now = new Date(2026, 8, 27, 9); // a sunday
-
-  it('names today and yesterday', () => {
-    assert.equal(dreamDay(new Date(2026, 8, 27, 6), now), 'last night');
-    assert.equal(dreamDay(new Date(2026, 8, 26, 23), now), 'yesterday');
-  });
-
-  it('names the weekday within the week, then the date', () => {
-    assert.equal(dreamDay(new Date(2026, 8, 22, 7), now), 'tuesday');
-    assert.equal(dreamDay(new Date(2026, 8, 12, 7), now), 'sep 12');
-  });
-});
+const painted = { image_status: 'completed', image_url: 'https://example.com/x.png' } as const;
+const now = new Date(2026, 8, 27, 9);
 
 describe('dreamMood', () => {
   it('prefers the dreamer’s own mood, lower-cased', () => {
@@ -83,66 +37,58 @@ describe('dreamMood', () => {
   });
 });
 
-describe('spokenText', () => {
-  it('keeps short dreams whole, tidied', () => {
-    assert.equal(spokenText('  I was   Floating\nin water '), 'i was floating in water');
-  });
+describe('pickPaintings', () => {
+  const a = dream('a', new Date(2026, 8, 27), painted);
+  const b = dream('b', new Date(2026, 8, 26), { image_status: 'generating' });
+  const c = dream('c', new Date(2026, 8, 25));
+  const d = dream('d', new Date(2026, 8, 24), painted);
+  const e = dream('e', new Date(2026, 8, 23), { analysis_status: 'pending' });
 
-  it('cuts long dreams at a word', () => {
-    const text = spokenText('the house by the river kept moving, room after room', 30);
-    assert.equal(text, 'the house by the river kept…');
-    assert.ok(text.length <= 31);
-  });
-});
-
-describe('visualizeTiming', () => {
-  it('types, holds briefly, then develops', () => {
-    const t = visualizeTiming(false, 10);
-    assert.ok(Math.abs(t.type - 0.15) < 1e-9);
-    assert.ok(Math.abs(t.out - 0.45) < 1e-9);
-    assert.ok(Math.abs(t.develop - 0.55) < 1e-9);
-  });
-
-  it('never keeps the dreamer waiting long', () => {
-    assert.equal(visualizeTiming(false, 500).type, 0.9);
-    assert.ok(visualizeTiming(false, 500).develop < 1.5);
-  });
-
-  it('skips the words when repainting', () => {
-    assert.deepEqual(visualizeTiming(true, 100), { type: 0, out: 0, develop: 0 });
-  });
-});
-
-describe('dustWords', () => {
-  it('splits into words and letters', () => {
-    const words = dustWords('a sea of lights', 1);
+  it('keeps painted dreams and ones being painted, newest first', () => {
     assert.deepEqual(
-      words.map((w) => w.chars.map((c) => c.ch).join('')),
-      ['a', 'sea', 'of', 'lights']
+      pickPaintings([c, d, a, b, e]).map((x) => x.id),
+      ['a', 'b', 'd']
     );
   });
 
-  it('types every letter in before any blows away', () => {
-    const chars = dustWords(spokenText('x'.repeat(40) + ' ' + 'y'.repeat(200)), 3).flatMap((w) => w.chars);
-    const lastIn = Math.max(...chars.map((c) => c.in));
-    const firstOut = Math.min(...chars.map((c) => c.out));
-    assert.ok(lastIn < firstOut);
+  it('adds the dream asked for, so it gets painted', () => {
+    assert.deepEqual(
+      pickPaintings([a, b, c, d], 'c').map((x) => x.id),
+      ['a', 'b', 'c', 'd']
+    );
   });
 
-  it('drifts letters upward, the same way each time', () => {
-    const a = dustWords('floating through', 2).flatMap((w) => w.chars);
-    const b = dustWords('floating through', 2).flatMap((w) => w.chars);
-    assert.deepEqual(a, b);
-    for (const c of a) {
-      assert.ok(c.dy <= -20 && c.dy >= -80);
-      assert.ok(Math.abs(c.dx) <= 30);
-    }
+  it('leaves out an unread dream even when asked (its picture comes from the reading)', () => {
+    assert.deepEqual(
+      pickPaintings([a, e], 'e').map((x) => x.id),
+      ['a']
+    );
   });
 });
 
-describe('seedFor', () => {
-  it('is stable per id and differs between ids', () => {
-    assert.equal(seedFor('abc'), seedFor('abc'));
-    assert.notEqual(seedFor('abc'), seedFor('abd'));
+describe('visualizeIntro', () => {
+  it('counts what was painted this week', () => {
+    const week = [dream('a', new Date(2026, 8, 27), painted), dream('b', new Date(2026, 8, 21), painted)];
+    const old = dream('c', new Date(2026, 8, 1), painted);
+    assert.equal(
+      visualizeIntro([...week, old], now),
+      '2 dreams painted from your own words. swipe to wander back through them, or tap + to paint a new one.'
+    );
+    assert.equal(visualizeIntro(week.slice(0, 1), now).startsWith('1 dream painted'), true);
+  });
+
+  it('still invites a look back when nothing is new, and a first dream when nothing is painted', () => {
+    assert.equal(
+      visualizeIntro([dream('c', new Date(2026, 8, 1), painted)], now),
+      'nothing new painted this week. swipe to wander back, or tap + to paint a new one.'
+    );
+    assert.equal(visualizeIntro([], now), 'nothing painted yet. tap + and tell afterdream a dream — it’ll be painted here.');
+  });
+});
+
+describe('cardMeta', () => {
+  it('reads "sep 27 • wonder", without a mood when there is none', () => {
+    assert.equal(cardMeta({ created_at: new Date(2026, 8, 27, 7).toISOString(), mood: 'Wonder' }), 'sep 27 • wonder');
+    assert.equal(cardMeta({ created_at: new Date(2026, 8, 27, 7).toISOString(), mood: null }), 'sep 27');
   });
 });
