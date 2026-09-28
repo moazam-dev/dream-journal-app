@@ -100,6 +100,11 @@ export default function RootLayout() {
           name="visualize"
           options={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: '#000000' } }}
         />
+        {/* The dream garden: grows with every night a dream is told, with the same tab bar as home. */}
+        <Stack.Screen
+          name="garden"
+          options={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: '#1d1838' } }}
+        />
         {/* Every dream told, under a night sky, with the same tab bar as home. */}
         <Stack.Screen
           name="entries"

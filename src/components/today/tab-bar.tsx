@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BrandFonts } from '@/constants/theme';
 
-export const TABS = ['today', 'visualize', 'entries', 'patterns'] as const;
+export const TABS = ['today', 'visualize', 'garden', 'entries', 'patterns'] as const;
 export type Tab = (typeof TABS)[number];
 
 /** Height of the tab row, above the home indicator. */
@@ -15,6 +15,7 @@ const LOGO = require('@/assets/images/afterdream-logo.png');
 const TAB_ROUTES: Record<Tab, Href> = {
   today: '/home',
   visualize: '/visualize',
+  garden: '/garden',
   entries: '/entries',
   patterns: '/patterns',
 };
@@ -40,7 +41,7 @@ type TabBarProps = {
   background?: string;
 };
 
-/** The black tab bar at the bottom of the Today, Visualize, Entries and Patterns screens. */
+/** The black tab bar at the bottom of the Today, Visualize, Garden, Entries and Patterns screens. */
 export function TabBar({ current, bottomInset, onPick, background = '#000' }: TabBarProps) {
   return (
     <View style={[styles.bar, { paddingBottom: bottomInset, backgroundColor: background }]} accessibilityRole="tablist">
@@ -74,6 +75,14 @@ function TabIcon({ tab }: { tab: Tab }) {
           <View style={styles.moonHalf} />
         </View>
       );
+    case 'garden':
+      return (
+        <View style={styles.sprout}>
+          <View style={styles.sproutStem} />
+          <View style={[styles.sproutLeaf, styles.sproutLeft]} />
+          <View style={[styles.sproutLeaf, styles.sproutRight]} />
+        </View>
+      );
     case 'entries':
       return (
         <View style={styles.lines}>
@@ -97,7 +106,7 @@ const styles = StyleSheet.create({
   bar: {
     flexDirection: 'row',
     paddingTop: 8,
-    paddingHorizontal: 10,
+    paddingHorizontal: 6,
   },
   tab: {
     flex: 1,
@@ -137,6 +146,37 @@ const styles = StyleSheet.create({
     bottom: 0,
     right: 0,
     backgroundColor: '#fff',
+  },
+  sprout: {
+    width: 22,
+    height: 22,
+  },
+  sproutStem: {
+    position: 'absolute',
+    left: 10,
+    bottom: 0,
+    width: 2,
+    height: 14,
+    borderRadius: 1,
+    backgroundColor: '#fff',
+  },
+  sproutLeaf: {
+    position: 'absolute',
+    width: 10,
+    height: 7,
+    backgroundColor: '#fff',
+  },
+  sproutLeft: {
+    left: 1,
+    top: 3,
+    borderTopLeftRadius: 10,
+    borderBottomRightRadius: 10,
+  },
+  sproutRight: {
+    right: 1,
+    top: 0,
+    borderTopRightRadius: 10,
+    borderBottomLeftRadius: 10,
   },
   lines: {
     gap: 4,

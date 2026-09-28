@@ -16,7 +16,8 @@ import { useDreams } from '@/hooks/use-dreams';
 import { deleteDream, updateDreamColor } from '@/services/dreams';
 import type { Dream } from '@/types/dream';
 import { getErrorMessage } from '@/utils/errors';
-import { calendarMonth, calendarWeek, monthName, monthStats, nightStreak, type DreamColor } from '@/utils/entries';
+import { calendarMonth, calendarWeek, monthName, monthStats, type DreamColor } from '@/utils/entries';
+import { currentStreak } from '@/utils/garden';
 
 /** The toast's whole life (the design's 3.2s), which is also how long a delete can be undone. */
 const TOAST_MS = 3200;
@@ -60,7 +61,7 @@ export default function EntriesScreen() {
   );
   const month = useMemo(() => calendarMonth(dreams, now), [dreams, now]);
   const week = useMemo(() => calendarWeek(dreams, now), [dreams, now]);
-  const streak = useMemo(() => nightStreak(dreams, now), [dreams, now]);
+  const streak = useMemo(() => currentStreak(dreams, now), [dreams, now]);
   // The sheet shows the latest version of its dream (a new colour shows straight away).
   const shownInSheet = sheetDream ? (dreams.find((dream) => dream.id === sheetDream.id) ?? sheetDream) : null;
 

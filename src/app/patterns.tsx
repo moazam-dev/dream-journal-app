@@ -16,7 +16,8 @@ import { PatternColors as C, PatternFonts as F } from '@/constants/theme';
 import { useDreams } from '@/hooks/use-dreams';
 import { usePatternReading } from '@/hooks/use-pattern-reading';
 import { loadProfileName } from '@/lib/profile';
-import { nightStreak, weekDays } from '@/utils/entries';
+import { weekDays } from '@/utils/entries';
+import { currentStreak } from '@/utils/garden';
 import {
   bestStreak,
   localCast,
@@ -100,7 +101,7 @@ export default function PatternsScreen() {
   const vivid = useMemo(() => vividNights(lately), [lately]);
   const vividLine = useMemo(() => vividNote(lately), [lately]);
 
-  const streak = nightStreak(dreams, now);
+  const streak = currentStreak(dreams, now);
   const kpis: Kpi[] = [
     { label: 'Current streak', value: String(streak), unit: streak === 1 ? 'night' : 'nights', color: C.rust },
     { label: 'This week', value: String(weekCount(dreams, now)), unit: weekCount(dreams, now) === 1 ? 'entry' : 'entries', color: C.sky },

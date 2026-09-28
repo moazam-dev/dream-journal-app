@@ -29,7 +29,8 @@ import { useDreams } from '@/hooks/use-dreams';
 import { loadCapsules, sealCapsule } from '@/lib/capsules';
 import { isVoiceAgentAvailable } from '@/lib/deepgram/native-audio';
 import { loadProfileName } from '@/lib/profile';
-import { nightStreak, weekDays } from '@/utils/entries';
+import { weekDays } from '@/utils/entries';
+import { currentStreak } from '@/utils/garden';
 import {
   activeCard,
   formatClock,
@@ -79,7 +80,7 @@ export default function HomeScreen() {
   const quote = useMemo(() => quoteOfDay(now), [now]);
   // Told dreams, for the streak and this week's days (reloads whenever Home comes back into view).
   const { dreams } = useDreams();
-  const streak = useMemo(() => nightStreak(dreams, now), [dreams, now]);
+  const streak = useMemo(() => currentStreak(dreams, now), [dreams, now]);
   const week = useMemo(() => weekDays(dreams, now), [dreams, now]);
 
   const [screen, setScreen] = useState({ width: 0, height: 0 });

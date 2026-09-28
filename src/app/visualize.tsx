@@ -13,7 +13,7 @@ import { COLUMN_WIDTH, CREAM, NextDream, Painting } from '@/components/visualize
 import { BrandFonts } from '@/constants/theme';
 import { useDreams } from '@/hooks/use-dreams';
 import type { Dream } from '@/types/dream';
-import { nightStreak } from '@/utils/entries';
+import { currentStreak } from '@/utils/garden';
 import { pickPaintings, visualizeIntro } from '@/utils/visualize';
 
 const TOAST_MS = 2200;
@@ -55,7 +55,7 @@ export default function VisualizeScreen() {
 
   const dreams = useMemo(() => loaded.map((dream) => changed[dream.id] ?? dream), [loaded, changed]);
   const paintings = useMemo(() => pickPaintings(dreams, id), [dreams, id]);
-  const streak = useMemo(() => nightStreak(dreams, now), [dreams, now]);
+  const streak = useMemo(() => currentStreak(dreams, now), [dreams, now]);
 
   const tabBarBottom = Math.max(insets.bottom, 8);
   const squeeze = Math.min(1, height / DESIGN_HEIGHT);
