@@ -6,21 +6,17 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
-  askAboutPatterns,
-  ASK_PROMPT,
-  buildAskBody,
   buildReadBody,
+  countDreams,
   dreamsBlock,
+  MAX_CAST,
   MAX_DREAM_CHARS,
   MAX_DREAMS,
-  MAX_QUESTION_CHARS,
   nightLabel,
-  parseAnswer,
   parseReading,
   READ_MODEL,
   READ_PROMPT,
   readPatterns,
-  readQuestion,
   readTimezoneOffset,
   type JournalDream,
 } from './patterns.ts';
@@ -49,27 +45,29 @@ const dreams: JournalDream[] = [
     places: [],
   },
   { dream_text: 'my grandmother’s kitchen, but the walls kept moving', created_at: '2026-09-26T06:00:00Z', mood: 'calm', user_mood: 'wistful' },
-  { dream_text: 'a lake that rose up the stairs', created_at: '2026-09-25T06:00:00Z' },
+  { dream_text: 'grandma and a lake that rose up the stairs', created_at: '2026-09-25T06:00:00Z' },
 ];
 
 const goodReading = {
-  thread: { title: 'Your mind is rehearsing a change.', body: '2 of your 3 dreams move under you.' },
-  insights: [
-    { title: 'places that won’t stay still', body: 'rooms and trains that shift.' },
-    { title: 'sundays run anxious', body: 'uneasy dreams cluster before the week.' },
-    { title: 'what are you getting ready for?', body: 'name it in the morning.' },
+  thread: { title: 'your mind is rehearsing a change.', body: '2 of your 3 dreams move under you.' },
+  monthTitle: '“A month of rooms that wouldn’t stay still.”',
+  cast: [
+    { name: 'a stranger', role: 'Stranger', dreams: [1], note: 'Faceless, always a step ahead.' },
+    { name: 'Grandma', role: 'family member', dreams: [2, 3, 3, 9, 0], note: 'shows up in kitchens and brings calm.' },
+    { name: 'grandma', role: 'family', dreams: [2], note: 'duplicate.' },
+    { name: 'me', role: 'self', dreams: [1, 2, 3], note: 'the dreamer.' },
+    { name: 'Ghost', role: 'figure', dreams: [42], note: 'not in any real dream.' },
   ],
-  questions: ['Why so many change dreams', 'when do i dream best?', 'when do i dream best?', 'what should i watch for?'],
+  symbols: [
+    { name: 'Doors', dreams: [1], meaning: 'choices you are weighing.' },
+    { name: 'water', dreams: [3, 2], meaning: 'how your feelings are moving.' },
+    { name: 'sea', dreams: [], meaning: 'never in a dream.' },
+    { name: 'stairs', dreams: [3], meaning: '' },
+  ],
+  question: { title: 'What are you getting ready for?', body: 'Name it in the morning.' },
 };
 
 describe('input checks', () => {
-  it('trims and cuts the question', () => {
-    assert.equal(readQuestion('  why?  '), 'why?');
-    assert.equal(readQuestion('x'.repeat(MAX_QUESTION_CHARS + 20)).length, MAX_QUESTION_CHARS);
-    assert.throws(() => readQuestion('   '), /required/);
-    assert.throws(() => readQuestion(42), /required/);
-  });
-
   it('accepts only sensible time zone offsets', () => {
     assert.equal(readTimezoneOffset(-300), -300);
     assert.equal(readTimezoneOffset(480.4), 480);
@@ -90,7 +88,7 @@ describe('dreamsBlock', () => {
     const block = dreamsBlock(dreams);
     assert.ok(block.startsWith('<dreams>\n1. sun sep 27 · title: The Doorless Train · mood: Curious · themes: change, travel · people: a stranger\n'));
     assert.ok(block.includes('2. sat sep 26 · mood: wistful\n   dream: my grandmother’s kitchen'));
-    assert.ok(block.includes('3. fri sep 25\n   dream: a lake that rose up the stairs'));
+    assert.ok(block.includes('3. fri sep 25\n   dream: grandma and a lake that rose up the stairs'));
     assert.ok(block.endsWith('</dreams>'));
   });
 
@@ -102,54 +100,61 @@ describe('dreamsBlock', () => {
   });
 });
 
-describe('request bodies', () => {
-  it('reads with strict JSON', () => {
+describe('request body', () => {
+  it('reads with strict JSON and asks for the cast from the dream text', () => {
     const body = buildReadBody(dreams);
     assert.equal(body.model, READ_MODEL);
     assert.equal(body.messages[0].content, READ_PROMPT);
     assert.equal(body.messages[1].content, dreamsBlock(dreams));
     assert.equal(body.response_format.json_schema.strict, true);
+    assert.deepEqual(body.response_format.json_schema.schema.required, ['thread', 'monthTitle', 'cast', 'symbols', 'question']);
+    assert.match(READ_PROMPT, /from the dream text itself/);
   });
+});
 
-  it('asks with the question after the dreams', () => {
-    const body = buildAskBody(dreams, 'why trains?', 0);
-    assert.equal(body.messages[0].content, ASK_PROMPT);
-    assert.ok(body.messages[1].content.endsWith('</dreams>\n<question>\nwhy trains?\n</question>'));
+describe('countDreams', () => {
+  it('counts each real dream once', () => {
+    assert.equal(countDreams([1, 2, 2, 3], 3), 3);
+    assert.equal(countDreams([0, 4, -1, 1.5, '2'], 3), 0);
+    assert.equal(countDreams('1,2', 3), 0);
   });
 });
 
 describe('parseReading', () => {
-  it('tidies the reading and its questions', () => {
-    const reading = parseReading(goodReading);
-    assert.equal(reading.thread.title, 'your mind is rehearsing a change.');
-    assert.equal(reading.insights.length, 3);
-    assert.deepEqual(reading.questions, ['why so many change dreams?', 'when do i dream best?', 'what should i watch for?']);
+  it('tidies the thread, month title and question', () => {
+    const reading = parseReading(goodReading, 3);
+    assert.equal(reading.thread.title, 'Your mind is rehearsing a change.');
+    assert.equal(reading.monthTitle, 'A month of rooms that wouldn’t stay still');
+    assert.equal(reading.question.title, 'What are you getting ready for?');
   });
 
-  it('keeps only the first three insights', () => {
-    const reading = parseReading({ ...goodReading, insights: [...goodReading.insights, { title: 'extra', body: 'extra' }] });
-    assert.equal(reading.insights.length, 3);
+  it('counts the cast from real dreams, merges repeats and leaves out the dreamer', () => {
+    const { cast } = parseReading(goodReading, 3);
+    assert.deepEqual(cast, [
+      { name: 'Grandma', role: 'family', count: 2, note: 'shows up in kitchens and brings calm.' },
+      { name: 'A stranger', role: 'stranger', count: 1, note: 'faceless, always a step ahead.' },
+    ]);
+  });
+
+  it('keeps at most a few cast members', () => {
+    const many = Array.from({ length: MAX_CAST + 3 }, (_, i) => ({ name: `person ${i}`, role: 'friend', dreams: [1], note: 'x' }));
+    assert.equal(parseReading({ ...goodReading, cast: many }, 3).cast.length, MAX_CAST);
+  });
+
+  it('keeps symbols with a meaning, most frequent first', () => {
+    const { symbols } = parseReading(goodReading, 3);
+    assert.deepEqual(symbols.map((s) => [s.name, s.count]), [['water', 2], ['doors', 1]]);
+    assert.equal(symbols[0].meaning, 'How your feelings are moving.');
+  });
+
+  it('allows a reading with nobody in it', () => {
+    assert.deepEqual(parseReading({ ...goodReading, cast: 'nope' }, 3).cast, []);
   });
 
   it('refuses a reading with missing parts', () => {
-    assert.throws(() => parseReading({ ...goodReading, thread: { title: '', body: 'x' } }), /thread/);
-    assert.throws(() => parseReading({ ...goodReading, insights: goodReading.insights.slice(0, 2) }), /too few/);
-    assert.throws(() => parseReading({ ...goodReading, insights: [goodReading.insights[0], {}, goodReading.insights[2]] }), /insight 2/);
-  });
-
-  it('allows a reading without questions', () => {
-    assert.deepEqual(parseReading({ ...goodReading, questions: 'nope' }).questions, []);
-  });
-});
-
-describe('parseAnswer', () => {
-  it('lower-cases and unquotes the answer', () => {
-    assert.equal(parseAnswer({ answer: '"Your Change dreams began that week."' }), 'your change dreams began that week.');
-  });
-
-  it('refuses an empty answer', () => {
-    assert.throws(() => parseAnswer({ answer: '  ' }), /empty/);
-    assert.throws(() => parseAnswer({}), /missing/);
+    assert.throws(() => parseReading({ ...goodReading, thread: { title: '', body: 'x' } }, 3), /thread/);
+    assert.throws(() => parseReading({ ...goodReading, question: {} }, 3), /question/);
+    assert.throws(() => parseReading({ ...goodReading, monthTitle: '  ' }, 3), /month title/);
   });
 });
 
@@ -158,13 +163,8 @@ describe('calling Groq', () => {
     const { fetchImpl, calls } = fakeGroq(200, reply(goodReading));
     const reading = await readPatterns(dreams, 'key', 0, fetchImpl);
     assert.equal(reading.dreamCount, 3);
-    assert.equal(reading.thread.body, '2 of your 3 dreams move under you.');
+    assert.equal(reading.cast[0].name, 'Grandma');
     assert.equal((calls[0].init.headers as Record<string, string>).Authorization, 'Bearer key');
-  });
-
-  it('returns the answer', async () => {
-    const { fetchImpl } = fakeGroq(200, reply({ answer: 'they began the week your routine changed.' }));
-    assert.equal(await askAboutPatterns(dreams, 'why?', 'key', 0, fetchImpl), 'they began the week your routine changed.');
   });
 
   it('throws when Groq fails or sends nonsense', async () => {

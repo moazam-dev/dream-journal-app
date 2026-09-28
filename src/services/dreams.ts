@@ -191,7 +191,7 @@ export async function composeDreamFromFragments(fragments: readonly Fragment[]):
 
 /**
  * Asks the `dream-patterns` Edge Function (Groq, server side) to read the newest dreams side
- * by side and find what runs through them. Nothing is saved.
+ * by side: the thread through them, the dream cast, symbols and a question. Nothing is saved.
  */
 export async function readDreamPatterns(): Promise<PatternReading> {
   const { data, error } = await supabase.functions.invoke<{ reading: PatternReading }>('dream-patterns', {
@@ -200,21 +200,13 @@ export async function readDreamPatterns(): Promise<PatternReading> {
 
   if (error) throw await toReadableError(error, 'Your patterns couldn’t be read right now. Please try again.');
   const reading = data?.reading;
-  if (typeof reading?.thread?.title !== 'string' || !Array.isArray(reading.insights) || !Array.isArray(reading.questions)) {
+  if (
+    typeof reading?.thread?.title !== 'string' ||
+    typeof reading.question?.title !== 'string' ||
+    !Array.isArray(reading.cast) ||
+    !Array.isArray(reading.symbols)
+  ) {
     throw new Error('The server sent an unexpected answer. Please try again.');
   }
   return reading;
-}
-
-/** Has the `dream-patterns` Edge Function answer a question about the dreamer's patterns. */
-export async function askDreamPatterns(question: string): Promise<string> {
-  const { data, error } = await supabase.functions.invoke<{ answer: string }>('dream-patterns', {
-    body: { mode: 'ask', question, timezoneOffset: new Date().getTimezoneOffset() },
-  });
-
-  if (error) throw await toReadableError(error, 'Afterdream couldn’t answer that right now. Please try again.');
-  if (typeof data?.answer !== 'string' || !data.answer.trim()) {
-    throw new Error('The server sent an unexpected answer. Please try again.');
-  }
-  return data.answer.trim();
 }

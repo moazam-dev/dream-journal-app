@@ -5,13 +5,13 @@
  *
  * 1. The app sends:          POST { "dreamId": "<uuid>" }
  * 2. We load that dream from the database.
- * 3. We ask Groq for a reflection (see analysis.ts).
+ * 3. We ask Groq for a reflection, and who and where the dream was about (see analysis.ts).
  * 4. We save the result on the same row and return the updated dream.
  * If the AI step fails, the dream is kept and marked analysis_status = 'failed'.
  */
 import { withSupabase } from '@supabase/server';
 
-import { analyzeDreamWithGroq } from './analysis.ts';
+import { analyzeDreamWithGroq, mergeNames } from './analysis.ts';
 
 export default {
   // `auth: 'publishable'` only lets in requests that carry this project's publishable key
@@ -54,11 +54,17 @@ export default {
         throw new Error('GROQ_API_KEY secret is not set for this project.');
       }
 
-      const analysis = await analyzeDreamWithGroq(dream.dream_text, apiKey);
+      const { people, places, ...analysis } = await analyzeDreamWithGroq(dream.dream_text, apiKey);
 
       const { data: updatedDream, error: saveError } = await db
         .from('dreams')
-        .update({ ...analysis, analysis_status: 'completed' })
+        .update({
+          ...analysis,
+          // Who and where the dream was about, added to anything the dreamer already typed.
+          people: mergeNames(dream.people, people),
+          places: mergeNames(dream.places, places),
+          analysis_status: 'completed',
+        })
         .eq('id', dreamId)
         .select()
         .single();

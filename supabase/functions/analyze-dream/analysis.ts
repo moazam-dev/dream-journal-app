@@ -12,7 +12,16 @@ export type DreamAnalysis = {
   mood: string;
   themes: string[];
   reflection: string;
+  /** Everyone in the dream except the dreamer: "grandma", "a stranger", "my dog". */
+  people: string[];
+  /** Where the dream happened: "the old house", "a train". */
+  places: string[];
 };
+
+/** Most people and places kept from one dream (the table allows 12 of each). */
+export const MAX_FOUND = 6;
+/** Longest person or place name kept (matches what the app lets the dreamer type). */
+export const MAX_FOUND_LENGTH = 40;
 
 export const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 export const GROQ_MODEL = 'openai/gpt-oss-120b';
@@ -42,6 +51,8 @@ Fields:
 - mood: 1 or 2 words for the overall feeling of the dream, e.g. "Mysterious", "Anxious", "Peaceful".
 - themes: 1 to 4 short themes, each 1 to 3 words in Title Case, e.g. "Change", "Feeling Lost".
 - reflection: 2 to 4 sentences, under 90 words. Exploratory and tentative. It may end with one gentle question the dreamer could think about.
+- people: every person, animal or figure in the dream other than the dreamer, 1 to 3 lower-case words each, as the dreamer names them, e.g. "grandma", "a stranger", "my dog", "sam". An empty list if nobody else appears.
+- places: up to 4 places where the dream happens, 1 to 3 lower-case words each, e.g. "the old house", "a train". An empty list if no place is clear.
 
 Reply with a single JSON object containing exactly these fields and nothing else.`;
 
@@ -58,8 +69,18 @@ export const DREAM_ANALYSIS_SCHEMA = {
       items: { type: 'string' },
     },
     reflection: { type: 'string', description: '2-4 tentative, exploratory sentences.' },
+    people: {
+      type: 'array',
+      description: 'Everyone in the dream except the dreamer.',
+      items: { type: 'string' },
+    },
+    places: {
+      type: 'array',
+      description: 'Up to 4 places where the dream happens.',
+      items: { type: 'string' },
+    },
   },
-  required: ['title', 'summary', 'mood', 'themes', 'reflection'],
+  required: ['title', 'summary', 'mood', 'themes', 'reflection', 'people', 'places'],
   additionalProperties: false,
 } as const;
 
@@ -152,7 +173,34 @@ export function parseDreamAnalysis(content: unknown): DreamAnalysis {
       )
       .slice(0, 4),
     reflection: requireText(record.reflection, 'reflection', 1200),
+    // Optional: an answer without them still counts, the dreamer can add them later.
+    people: foundNames(record.people).filter((name) => !SELF.test(name)),
+    places: foundNames(record.places),
   };
+}
+
+/** Words that mean the dreamer themselves, never someone else in the dream. */
+const SELF = /^(i|me|myself|you|yourself|the dreamer|dreamer)$/;
+
+/** Lower-case names without blanks or repeats, at most MAX_FOUND. */
+function foundNames(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const names = value
+    .filter((name): name is string => typeof name === 'string')
+    .map((name) => cleanText(name, MAX_FOUND_LENGTH).toLowerCase());
+  return names.filter((name, index) => name.length > 0 && names.indexOf(name) === index).slice(0, MAX_FOUND);
+}
+
+/**
+ * The people or places to save: the ones the dreamer already added first, then the newly
+ * found ones not already there (ignoring upper/lower case), at most 12 in all.
+ */
+export function mergeNames(saved: readonly string[] | null | undefined, found: readonly string[]): string[] {
+  const merged = [...(saved ?? [])];
+  for (const name of found) {
+    if (!merged.some((other) => other.toLowerCase() === name.toLowerCase())) merged.push(name);
+  }
+  return merged.slice(0, 12);
 }
 
 function requireText(value: unknown, field: string, maxLength: number) {

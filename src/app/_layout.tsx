@@ -5,12 +5,14 @@ import {
   BricolageGrotesque_600SemiBold,
   useFonts,
 } from '@expo-google-fonts/bricolage-grotesque';
+import { InstrumentSans_400Regular, InstrumentSans_500Medium, InstrumentSans_600SemiBold } from '@expo-google-fonts/instrument-sans';
+import { InstrumentSerif_400Regular, InstrumentSerif_400Regular_Italic } from '@expo-google-fonts/instrument-serif';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
-import { BrandColors, Colors, NightColors, SettingsColors, VoiceColors } from '@/constants/theme';
+import { BrandColors, Colors, NightColors, PatternColors, SettingsColors, VoiceColors } from '@/constants/theme';
 import { PERSONALIZING_BACKGROUND } from '@/utils/personalize';
 
 // Keep the splash screen up until the brand font has loaded (avoids a flash of the wrong font).
@@ -26,6 +28,11 @@ export default function RootLayout() {
     BricolageGrotesque_400Regular,
     BricolageGrotesque_500Medium,
     BricolageGrotesque_600SemiBold,
+    InstrumentSans_400Regular,
+    InstrumentSans_500Medium,
+    InstrumentSans_600SemiBold,
+    InstrumentSerif_400Regular,
+    InstrumentSerif_400Regular_Italic,
   });
   const ready = fontsLoaded || !!fontError; // if the font fails, carry on with the system font
 
@@ -101,7 +108,7 @@ export default function RootLayout() {
         {/* What keeps coming back across the dreams, with the same tab bar as home. */}
         <Stack.Screen
           name="patterns"
-          options={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: '#000000' } }}
+          options={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: PatternColors.background } }}
         />
         {/* Settings, opened from the cog on Patterns: black, with its own back button. */}
         <Stack.Screen name="settings" options={{ headerShown: false, contentStyle: { backgroundColor: SettingsColors.background } }} />

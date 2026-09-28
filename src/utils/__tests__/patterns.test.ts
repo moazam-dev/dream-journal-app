@@ -4,22 +4,35 @@ import { describe, it } from 'node:test';
 
 import type { Dream } from '../../types/dream.ts';
 import {
-  bestLine,
   bestStreak,
-  dreamPeople,
-  dreamSymbols,
-  MOOD_KEY_COLORS,
+  castLine,
+  castNote,
+  castRole,
+  localCast,
+  MAX_DOTS,
+  monthDreams,
+  monthHeadline,
+  monthReport,
   moodHeadline,
-  moodNights,
-  OTHER_MOOD_COLOR,
-  PATTERN_COLORS,
+  moodMix,
+  MOOD_COLORS,
   patternsDate,
+  pickCast,
+  pickSymbols,
+  QUIET_COLOR,
   recentDreams,
+  reportShareText,
+  reportStats,
+  splitHeadline,
   tally,
-  themeNote,
+  THEME_COLORS,
+  threadLabel,
   topThemes,
-  weekLabel,
-  weekNights,
+  VIVID_COLOR,
+  vividNights,
+  vividNote,
+  weekCount,
+  type PatternReading,
 } from '../patterns.ts';
 
 // Sunday 27 September 2026, late morning.
@@ -44,18 +57,47 @@ function dream(id: string, told: Date, extra: Partial<Dream> = {}): Dream {
   };
 }
 
-const night = (day: number, hour = 7) => new Date(2026, 8, day, hour);
+const night = (day: number, hour = 7, minute = 0) => new Date(2026, 8, day, hour, minute);
 
-describe('patternsDate', () => {
+const reading: PatternReading = {
+  thread: { title: 'Your mind is rehearsing a change.', body: '7 of your last 12 dreams shift.' },
+  monthTitle: 'a month of rooms that wouldn’t stay still',
+  cast: [
+    { name: 'Grandma', role: 'family', count: 3, note: 'shows up in kitchens.' },
+    { name: 'A stranger', role: 'stranger', count: 2, note: 'always a step ahead.' },
+  ],
+  symbols: [{ name: 'water', count: 5, meaning: 'how your feelings are moving.' }],
+  question: { title: 'What are you getting ready for?', body: 'Name it in the morning.' },
+  dreamCount: 12,
+};
+
+describe('dates', () => {
   it('reads like the design', () => {
-    assert.equal(patternsDate(NOW), 'sunday, sep 27');
+    assert.equal(patternsDate(NOW), 'Sunday, Sep 27');
   });
-});
 
-describe('recentDreams', () => {
   it('keeps the last 30 nights, including today', () => {
     const dreams = [dream('today', night(27)), dream('edge', new Date(2026, 7, 29, 7)), dream('old', new Date(2026, 7, 28, 7)), dream('later', night(28))];
     assert.deepEqual(recentDreams(dreams, NOW).map((d) => d.id), ['today', 'edge']);
+  });
+
+  it('keeps this calendar month', () => {
+    const dreams = [dream('sep', night(1)), dream('aug', new Date(2026, 7, 31, 7))];
+    assert.deepEqual(monthDreams(dreams, NOW).map((d) => d.id), ['sep']);
+  });
+});
+
+describe('streaks and weeks', () => {
+  it('counts the dreams told since Monday', () => {
+    // Monday was the 21st.
+    const dreams = [dream('sun', night(27)), dream('mon', night(21)), dream('mon2', night(21, 23)), dream('lastweek', night(20))];
+    assert.equal(weekCount(dreams, NOW), 3);
+  });
+
+  it('finds the longest run ever', () => {
+    const dreams = [night(1), night(2), night(3), night(10), night(11)].map((d, i) => dream(String(i), d));
+    assert.equal(bestStreak(dreams), 3);
+    assert.equal(bestStreak([]), 0);
   });
 });
 
@@ -68,131 +110,168 @@ describe('tally', () => {
   });
 });
 
-describe('themes', () => {
-  const dreams = [
-    dream('a', night(27), { themes: ['change', 'water'], user_mood: 'curious' }),
-    dream('b', night(26), { themes: ['Change'], mood: 'Curious' }),
-    dream('c', night(24), { themes: ['home'], mood: 'calm' }),
+describe('dream cast', () => {
+  it('guesses roles from how people are named', () => {
+    assert.equal(castRole('grandma'), 'family');
+    assert.equal(castRole('my mum'), 'family');
+    assert.equal(castRole('a stranger'), 'unknown');
+    assert.equal(castRole('my dog'), 'companion');
+    assert.equal(castRole('old friend'), 'friend');
+    assert.equal(castRole('my boss'), 'colleague');
+    assert.equal(castRole('Sam'), 'someone');
+  });
+
+  it('tallies the saved people with notes', () => {
+    const dreams = [
+      dream('a', night(27), { people: ['Grandma', 'a stranger'], places: ['the kitchen'], user_mood: 'calm' }),
+      dream('b', night(25), { people: ['grandma'], places: ['the old house', 'the kitchen'], mood: 'Calm' }),
+      dream('c', night(20), { people: ['my dog'] }),
+    ];
+    const cast = localCast(dreams);
+    assert.deepEqual(cast.map((m) => [m.name, m.count, m.role]), [
+      ['Grandma', 2, 'family'],
+      ['A stranger', 1, 'unknown'],
+      ['My dog', 1, 'companion'],
+    ]);
+    assert.equal(cast[0].note, 'shows up in the kitchen and the old house. these dreams mostly felt calm.');
+    assert.equal(cast[1].note, 'showed up once in the kitchen, on sep 27, and it felt calm.');
+    assert.equal(cast[2].note, 'showed up once, on sep 20.');
+  });
+
+  it('skips vague places in the note', () => {
+    assert.equal(castNote([dream('x', night(20), { places: ['nowhere'] })]), 'showed up once, on sep 20.');
+  });
+
+  it('writes a note without places', () => {
+    assert.equal(castNote([dream('x', night(20)), dream('y', night(18))]), 'last showed up sep 20.');
+    assert.equal(castNote([]), '');
+  });
+
+  it('prefers the reading’s cast, which finds people in the dream text', () => {
+    const local = localCast([dream('a', night(27), { people: ['sam'] })]);
+    assert.deepEqual(pickCast(null, local).map((m) => m.name), ['Sam']);
+    const cast = pickCast(reading, local);
+    assert.deepEqual(cast.map((m) => [m.name, m.role]), [['Grandma', 'family'], ['A stranger', 'unknown']]);
+    assert.deepEqual(pickCast({ ...reading, cast: [] }, local).map((m) => m.name), ['Sam']);
+  });
+
+  it('says how often and who', () => {
+    assert.equal(castLine({ count: 3, role: 'family' }), '3 dreams · family');
+    assert.equal(castLine({ count: 1, role: 'friend' }), '1 dream · friend');
+  });
+});
+
+describe('monthly report', () => {
+  // The 26th is a Saturday.
+  const month = [
+    dream('a', night(26), { themes: ['change'], mood: 'Calm', people: ['grandma'] }),
+    dream('b', night(19), { themes: ['Change', 'home'], user_mood: 'peaceful', people: ['Grandma', 'sam'] }),
+    dream('c', night(21), { themes: ['home'], mood: 'uneasy' }),
   ];
 
-  it('ranks themes with colours and notes', () => {
+  it('sums up the month', () => {
+    assert.deepEqual(monthReport(month), { count: 3, topTheme: 'change', mainMood: 'calm', topPerson: 'grandma', calmestDay: 'Saturday' });
+    assert.deepEqual(monthReport([]), { count: 0, topTheme: null, mainMood: null, topPerson: null, calmestDay: null });
+  });
+
+  it('titles the month from the reading, or from the top theme', () => {
+    const report = monthReport(month);
+    assert.equal(monthHeadline(report, reading), 'A month of rooms that wouldn’t stay still');
+    assert.equal(monthHeadline(report, null), 'A month of change');
+    assert.equal(monthHeadline(monthReport([]), null), 'A quiet month, so far');
+  });
+
+  it('sets the end of the title in italics', () => {
+    assert.deepEqual(splitHeadline('A month of rooms that wouldn’t stay still'), { plain: 'A month of ', italic: 'rooms that wouldn’t stay still' });
+    assert.deepEqual(splitHeadline('A quiet month, so far'), { plain: 'A quiet month, ', italic: 'so far' });
+    assert.deepEqual(splitHeadline('Strange weeks'), { plain: '', italic: 'Strange weeks' });
+  });
+
+  it('shows three numbers and shares them', () => {
+    const report = monthReport(month);
+    assert.deepEqual(reportStats(report), [
+      { value: '3', label: 'dreams' },
+      { value: 'change', label: 'top theme' },
+      { value: 'calm', label: 'main mood' },
+    ]);
+    assert.equal(
+      reportShareText('September', report, 'A month of change'),
+      'My September in dreams on Afterdream: 3 dreams, top theme "change", mostly calm. A month of change.'
+    );
+  });
+});
+
+describe('dive deeper', () => {
+  it('ranks themes with colours and a dot per dream', () => {
+    const dreams = [dream('a', night(27), { themes: ['change', 'water'] }), dream('b', night(26), { themes: ['Change'] })];
     const themes = topThemes(dreams);
-    assert.deepEqual(themes.map((t) => [t.name, t.count, t.color]), [
-      ['change', 2, PATTERN_COLORS[0]],
-      ['water', 1, PATTERN_COLORS[1]],
-      ['home', 1, PATTERN_COLORS[2]],
+    assert.deepEqual(themes.map((t) => [t.rank, t.name, t.count, t.dots, t.color]), [
+      [1, 'Change', 2, 2, THEME_COLORS[0]],
+      [2, 'Water', 1, 1, THEME_COLORS[1]],
     ]);
-    assert.equal(themes[0].note, 'last showed up sep 27. these dreams mostly felt curious.');
-    assert.equal(themes[2].note, 'showed up once, on sep 24, feeling calm.');
+    const many = Array.from({ length: MAX_DOTS + 3 }, (_, i) => dream(String(i), night(1 + i), { themes: ['water'] }));
+    assert.equal(topThemes(many)[0].dots, MAX_DOTS);
   });
 
-  it('writes a note without a mood', () => {
-    assert.equal(themeNote([dream('x', night(20))]), 'showed up once, on sep 20.');
-    assert.equal(themeNote([]), '');
-  });
-});
-
-describe('weekNights', () => {
-  it('marks the caught nights this week and the richest one', () => {
-    const long = Array.from({ length: 120 }, () => 'word').join(' ');
-    const dreams = [dream('mon', night(21)), dream('wed', night(23), { dream_text: long }), dream('lastweek', night(20))];
-    const week = weekNights(dreams, NOW);
-    assert.deepEqual(week.nights.map((n) => n.caught), [true, false, true, false, false, false, false]);
-    assert.deepEqual(week.nights.map((n) => n.best), [false, false, true, false, false, false, false]);
-    assert.equal(week.nights[2].height, 76);
-    assert.equal(week.nights[1].height, 16);
-    assert.equal(week.caught, 2);
-    assert.equal(week.elapsed, 7);
-  });
-
-  it('only counts the days so far', () => {
-    const tuesday = new Date(2026, 8, 22, 9);
-    assert.equal(weekNights([], tuesday).elapsed, 2);
-    assert.equal(weekLabel(1, 1), '1 of 1 night caught');
-    assert.equal(weekLabel(5, 7), '5 of 7 nights caught');
-  });
-});
-
-describe('streaks', () => {
-  it('finds the longest run of nights ever', () => {
-    const dreams = [night(1), night(2), night(2, 22), night(3), night(10), night(11)].map((d, i) => dream(String(i), d));
-    assert.equal(bestStreak(dreams), 3);
-    assert.equal(bestStreak([]), 0);
+  it('mixes moods and names the uneasy weekday', () => {
+    // The 20th and 13th are Sundays.
+    const dreams = [
+      dream('a', night(27), { mood: 'calm' }),
+      dream('b', night(26), { mood: 'calm' }),
+      dream('c', night(20), { mood: 'uneasy' }),
+      dream('d', night(13), { mood: 'Uneasy' }),
+      dream('e', night(12)),
+      dream('f', night(11), { mood: 'calm' }),
+    ];
+    const mix = moodMix(dreams);
+    assert.deepEqual(mix, [
+      { name: 'Calm', pct: 60, color: MOOD_COLORS[0] },
+      { name: 'Uneasy', pct: 40, color: MOOD_COLORS[1] },
+    ]);
+    assert.deepEqual(moodHeadline(dreams, mix), { plain: 'Mostly calm, with ', italic: 'uneasy Sundays' });
+    assert.deepEqual(moodHeadline(dreams.slice(0, 3), moodMix(dreams.slice(0, 3))), { plain: 'Mostly calm, sometimes ', italic: 'uneasy' });
+    assert.deepEqual(moodHeadline([], []), null);
   });
 
-  it('runs across a month boundary', () => {
-    assert.equal(bestStreak([dream('a', new Date(2026, 7, 31, 7)), dream('b', new Date(2026, 8, 1, 7))]), 2);
-  });
-
-  it('says how far the current streak is from the best', () => {
-    assert.equal(bestLine(9, 14), '5 more to beat it');
-    assert.equal(bestLine(14, 14), 'your best run yet');
-    assert.equal(bestLine(0, 0), 'start one tonight');
-  });
-});
-
-describe('moods', () => {
-  const dreams = [
-    dream('1', night(27), { mood: 'Calm' }),
-    dream('1b', night(27, 3), { mood: 'scared' }),
-    dream('2', night(26), { user_mood: 'calm', mood: 'anxious' }),
-    dream('3', night(20), { mood: 'uneasy' }),
-    dream('4', night(13), { mood: 'uneasy' }),
-    dream('5', night(12), { mood: 'weird' }),
-    dream('6', night(11), { mood: 'sad' }),
-    dream('7', night(10), { mood: 'happy' }),
-    dream('8', night(9)),
-  ];
-
-  it('gives each of the last nights its newest dream’s mood', () => {
-    const { nights, legend, from } = moodNights(dreams, NOW);
-    assert.equal(nights.length, 28);
-    assert.equal(from, 'aug 31');
-    assert.equal(nights[27].mood, 'calm');
-    assert.equal(nights[27].color, MOOD_KEY_COLORS[0]);
-    assert.equal(nights[26].height, 37);
-    assert.equal(nights[0].told, false);
-    assert.equal(nights[0].height, 10);
-    // A dream without a mood still shows as a bar.
-    assert.equal(nights[9].told, true);
-    assert.equal(nights[9].color, OTHER_MOOD_COLOR);
-    assert.deepEqual(legend.map((m) => [m.name, m.pct]), [
-      ['calm', 29],
-      ['uneasy', 29],
-      ['weird', 14],
-      ['sad', 14],
+  it('folds rare moods into "Other" so the shares add up', () => {
+    const dreams = ['calm', 'calm', 'calm', 'uneasy', 'uneasy', 'awe', 'curious', 'surreal'].map((mood, i) => dream(String(i), night(20 - i), { mood }));
+    assert.deepEqual(moodMix(dreams).map((m) => [m.name, m.pct]), [
+      ['Calm', 38],
+      ['Uneasy', 25],
+      ['Awe', 13],
+      ['Other', 25],
     ]);
   });
 
-  it('writes the headline, with a weekday when a mood keeps landing on one', () => {
-    const { nights, legend } = moodNights(dreams, NOW);
-    assert.deepEqual(moodHeadline(nights, legend)?.map((p) => p.text).join(''), 'mostly calm, with uneasy sundays.');
-    const once = moodNights(dreams.slice(0, 4), NOW);
-    assert.equal(moodHeadline(once.nights, once.legend)?.map((p) => p.text).join(''), 'mostly calm, sometimes uneasy.');
-    const alone = moodNights(dreams.slice(0, 1), NOW);
-    assert.equal(moodHeadline(alone.nights, alone.legend)?.map((p) => p.text).join(''), 'mostly calm.');
-    assert.equal(moodHeadline([], []), null);
-  });
-});
-
-describe('people and symbols', () => {
-  const dreams = [
-    dream('a', night(27), { people: ['Grandma', 'a stranger'], places: ['the old house'], themes: ['change', 'water'] }),
-    dream('b', night(26), { people: ['a stranger', '  rosa'], places: ['The old house'], themes: ['water'] }),
-  ];
-
-  it('finds the people who show up most, with initials', () => {
-    assert.deepEqual(dreamPeople(dreams).map((p) => [p.name, p.initial, p.label]), [
-      ['a stranger', '?', '2 dreams'],
-      ['grandma', 'G', '1 dream'],
-      ['rosa', 'R', '1 dream'],
+  it('uses the reading’s symbols, or the saved places without meanings', () => {
+    const dreams = [dream('a', night(27), { places: ['the lake'], themes: ['change', 'doors'] })];
+    assert.deepEqual(pickSymbols(reading, dreams, []), reading.symbols);
+    assert.deepEqual(pickSymbols(null, dreams, ['Change']), [
+      { name: 'the lake', count: 1, meaning: null },
+      { name: 'doors', count: 1, meaning: null },
     ]);
   });
 
-  it('lists places and smaller themes, skipping the big ones', () => {
-    assert.deepEqual(dreamSymbols(dreams, ['water']), [
-      { name: 'the old house', count: 2 },
-      { name: 'change', count: 1 },
-    ]);
+  it('finds the most vivid weekdays', () => {
+    const long = Array.from({ length: 90 }, () => 'word').join(' ');
+    // 26th Saturday, 27th Sunday, 21st Monday.
+    const dreams = [
+      dream('sat', night(26, 7, 30), { dream_text: long }),
+      dream('sun', night(27, 7, 40), { dream_text: long }),
+      dream('mon', night(21, 7, 45)),
+    ];
+    const nights = vividNights(dreams);
+    assert.deepEqual(nights.map((n) => n.day), ['M', 'T', 'W', 'T', 'F', 'S', 'S']);
+    assert.deepEqual(nights.map((n) => n.dots), [1, 0, 0, 0, 0, MAX_DOTS, MAX_DOTS]);
+    assert.equal(nights[5].color, VIVID_COLOR);
+    assert.equal(nights[1].color, QUIET_COLOR);
+    assert.equal(vividNote(dreams), 'Weekends are your richest nights. You usually log your dreams around 7:30am.');
+    assert.equal(vividNote([dream('mon', night(21, 7))]), 'Mondays are your richest nights.');
+    assert.equal(vividNote([]), '');
+  });
+
+  it('labels the thread', () => {
+    assert.equal(threadLabel(12), 'The thread · 12 dreams');
+    assert.equal(threadLabel(1), 'The thread · 1 dream');
   });
 });

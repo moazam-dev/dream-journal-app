@@ -2,16 +2,16 @@
  * Supabase Edge Function: dream-patterns
  *
  * Runs on Supabase's servers, never on the phone, so the Groq API key stays secret.
- * It loads the newest dreams itself, so the app only says what it wants. Nothing is saved.
+ * It loads the newest dreams itself, so the app only says when to read. Nothing is saved.
  *
- * The app sends one of:
- *   POST { "mode": "read", "timezoneOffset": -300 }                       →  { "reading": { thread, insights, questions, dreamCount } }
- *   POST { "mode": "ask",  "timezoneOffset": -300, "question": "…?" }     →  { "answer" }
- * `timezoneOffset` is the app's `new Date().getTimezoneOffset()`. See patterns.ts for the prompts.
+ * The app sends:
+ *   POST { "mode": "read", "timezoneOffset": -300 }
+ *     →  { "reading": { thread, monthTitle, cast, symbols, question, dreamCount } }
+ * `timezoneOffset` is the app's `new Date().getTimezoneOffset()`. See patterns.ts for the prompt.
  */
 import { withSupabase } from '@supabase/server';
 
-import { askAboutPatterns, MAX_DREAMS, MIN_DREAMS, readPatterns, readQuestion, readTimezoneOffset } from './patterns.ts';
+import { MAX_DREAMS, MIN_DREAMS, readPatterns, readTimezoneOffset } from './patterns.ts';
 
 export default {
   // `auth: 'publishable'` only lets in requests that carry this project's publishable key.
@@ -22,18 +22,8 @@ export default {
     }
 
     const payload = await req.json().catch(() => null);
-    const mode = payload?.mode;
-    if (mode !== 'read' && mode !== 'ask') {
-      return Response.json({ error: 'mode must be "read" or "ask".' }, { status: 400 });
-    }
-
-    let question = '';
-    if (mode === 'ask') {
-      try {
-        question = readQuestion(payload?.question);
-      } catch (error) {
-        return Response.json({ error: (error as Error).message }, { status: 400 });
-      }
+    if (payload?.mode !== 'read') {
+      return Response.json({ error: 'mode must be "read".' }, { status: 400 });
     }
     const timezoneOffset = readTimezoneOffset(payload?.timezoneOffset);
 
@@ -56,18 +46,11 @@ export default {
       if (!apiKey) {
         throw new Error('GROQ_API_KEY secret is not set for this project.');
       }
-
-      if (mode === 'read') {
-        return Response.json({ reading: await readPatterns(dreams, apiKey, timezoneOffset) });
-      }
-      return Response.json({ answer: await askAboutPatterns(dreams, question, apiKey, timezoneOffset) });
+      return Response.json({ reading: await readPatterns(dreams, apiKey, timezoneOffset) });
     } catch (error) {
       // Full details go to the function logs; the app only gets a friendly message.
-      console.error(`dream-patterns (${mode}) failed`, error);
-      return Response.json(
-        { error: mode === 'read' ? 'Your patterns couldn’t be read right now. Please try again.' : 'Afterdream couldn’t answer that right now. Please try again.' },
-        { status: 502 }
-      );
+      console.error('dream-patterns failed', error);
+      return Response.json({ error: 'Your patterns couldn’t be read right now. Please try again.' }, { status: 502 });
     }
   }),
 };

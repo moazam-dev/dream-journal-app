@@ -59,6 +59,40 @@ export const BrandFonts = {
   semibold: 'BricolageGrotesque_600SemiBold',
 } as const;
 
+/** Instrument Serif and Sans (the Patterns design), loaded in the root layout. */
+export const PatternFonts = {
+  serif: 'InstrumentSerif_400Regular',
+  serifItalic: 'InstrumentSerif_400Regular_Italic',
+  sans: 'InstrumentSans_400Regular',
+  sansMedium: 'InstrumentSans_500Medium',
+  sansSemibold: 'InstrumentSans_600SemiBold',
+} as const;
+
+/** Warm night palette from the Afterdream Patterns design. */
+export const PatternColors = {
+  background: '#0F0E0D',
+  card: '#1C1A17',
+  line: '#2E2B26',
+  cream: '#F3EEE4',
+  muted: '#A39B8C',
+  ink: '#1B1A17',
+  rust: '#C8553D',
+  mustard: '#E3B04B',
+  sky: '#7C9CBF',
+  plum: '#3D2A4F',
+  aubergine: '#5B3A5E',
+  lilac: '#D8C7E3',
+  forest: '#2F4A3A',
+  mint: '#C9D6C3',
+  sage: '#8FA98B',
+  sageLight: '#A9BFA5',
+  paperLine: '#D9D2C4',
+  paperMuted: '#6E675B',
+  paperText: '#3B372F',
+  whatsapp: '#25D366',
+  whatsappInk: '#0B2A16',
+} as const;
+
 /** Black palette from the Afterdream Settings design. */
 export const SettingsColors = {
   background: '#000000',

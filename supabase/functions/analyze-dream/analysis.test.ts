@@ -9,6 +9,8 @@ import {
   analyzeDreamWithGroq,
   buildGroqRequestBody,
   MAX_DREAM_CHARS,
+  MAX_FOUND,
+  mergeNames,
   parseDreamAnalysis,
   SYSTEM_PROMPT,
 } from './analysis.ts';
@@ -39,6 +41,8 @@ const detailedAnswer = {
   themes: ['Isolation', 'Searching', 'Feeling Stuck'],
   reflection:
     'The looping streets may suggest a sense of going in circles. One possible interpretation is a wish to reach out to someone. What might you be searching for?',
+  people: [],
+  places: ['an empty city', 'the same square'],
 };
 
 describe('buildGroqRequestBody', () => {
@@ -69,7 +73,22 @@ describe('parseDreamAnalysis', () => {
       themes: ['Falling'],
       reflection: 'There is little detail to go on, but falling could reflect a feeling of losing control.',
     };
-    assert.deepEqual(parseDreamAnalysis(JSON.stringify(shortAnswer)), shortAnswer);
+    // No people or places in the answer: still fine, they come back empty.
+    assert.deepEqual(parseDreamAnalysis(JSON.stringify(shortAnswer)), { ...shortAnswer, people: [], places: [] });
+  });
+
+  it('keeps the people in the dream: lower case, no repeats, never the dreamer', () => {
+    const result = parseDreamAnalysis(
+      JSON.stringify({ ...detailedAnswer, people: [' Grandma ', 'grandma', 'Me', 'A Stranger', '', 7, 'my dog'] })
+    );
+    assert.deepEqual(result.people, ['grandma', 'a stranger', 'my dog']);
+  });
+
+  it('keeps at most a few people and places', () => {
+    const many = Array.from({ length: MAX_FOUND + 4 }, (_, i) => `person ${i}`);
+    const result = parseDreamAnalysis(JSON.stringify({ ...detailedAnswer, people: many, places: many }));
+    assert.equal(result.people.length, MAX_FOUND);
+    assert.equal(result.places.length, MAX_FOUND);
   });
 
   it('cleans up themes: trims, removes duplicates and blanks, keeps at most 4', () => {
@@ -107,6 +126,18 @@ describe('parseDreamAnalysis', () => {
 
   it('rejects JSON that is not an object', () => {
     assert.throws(() => parseDreamAnalysis('["a", "b"]'), /not an object/);
+  });
+});
+
+describe('mergeNames', () => {
+  it('keeps what the dreamer typed and adds the new names', () => {
+    assert.deepEqual(mergeNames(['Grandma'], ['grandma', 'a stranger']), ['Grandma', 'a stranger']);
+    assert.deepEqual(mergeNames(null, ['my dog']), ['my dog']);
+  });
+
+  it('never saves more than the table allows', () => {
+    const typed = Array.from({ length: 11 }, (_, i) => `typed ${i}`);
+    assert.equal(mergeNames(typed, ['a', 'b', 'c']).length, 12);
   });
 });
 
