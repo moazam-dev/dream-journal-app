@@ -119,23 +119,6 @@ export const SettingsColors = {
   sky: '#A8D8F0',
 } as const;
 
-/** Dark, calm palette used only by the voice companion screen. */
-export const VoiceColors = {
-  background: '#0D0B1E',
-  surface: 'rgba(255, 255, 255, 0.07)',
-  userBubble: 'rgba(139, 124, 246, 0.28)',
-  text: '#F2F0FA',
-  textSecondary: '#A8A3C2',
-  // Orb colours per state.
-  idle: '#6E68A3',
-  connecting: '#6E68A3',
-  listening: '#8B7CF6',
-  thinking: '#5E8BF0',
-  speaking: '#C58BFF',
-  muted: '#55526A',
-  error: '#E0607A',
-} as const;
-
 export const Spacing = {
   xs: 4,
   sm: 8,

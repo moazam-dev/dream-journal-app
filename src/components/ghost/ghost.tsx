@@ -1,5 +1,5 @@
-import { Image, StyleSheet, View } from 'react-native';
-import Animated, { cubicBezier } from 'react-native-reanimated';
+import { Image, StyleSheet, View, type ViewStyle } from 'react-native';
+import Animated, { cubicBezier, type CSSAnimationKeyframes, type CSSAnimationProperties } from 'react-native-reanimated';
 
 import { BrandColors } from '@/constants/theme';
 
@@ -69,7 +69,12 @@ export function Ghost({ size, starIn, starDark, bodyIn, agreed, hop, leaving, re
   const motion = reduceMotion ? 0 : 1;
 
   // Loops start once the intro has played (3.2 s in the design).
-  function loop(name: object, duration: number, delay: number, timing: 'linear' | 'ease-in-out') {
+  function loop(
+    name: CSSAnimationKeyframes<ViewStyle>,
+    duration: number,
+    delay: number,
+    timing: 'linear' | 'ease-in-out',
+  ): CSSAnimationProperties<ViewStyle> | null {
     if (reduceMotion) return null;
     return {
       animationName: name,

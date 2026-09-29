@@ -3,9 +3,10 @@ import type { ComponentProps, ReactNode, Ref } from 'react';
 import { StyleSheet, Text, View, type ColorValue } from 'react-native';
 import Animated from 'react-native-reanimated';
 
+import { BalancedText } from '@/components/balanced-text';
 import { BrandFonts } from '@/constants/theme';
 
-import { DRIFT, DRIFT_BACK, EASE_OUT, loop, ZOOM } from './motion';
+import { DRIFT, DRIFT_BACK, loop, ZOOM } from './motion';
 
 /** Soft blob of light drifting behind a card's text. Positions are in the design's points. */
 export type Glow = {
@@ -21,7 +22,13 @@ export type Glow = {
 };
 
 type TodayCardProps = {
+  /** Height of the card's content, between the two insets. */
   height: number;
+  /** Space kept clear at the top of the page (status bar and the streak row). */
+  insetTop: number;
+  /** Space kept clear at the bottom of the page (the tab bar). */
+  insetBottom: number;
+  /** The card filling the screen right now. Only it runs its slow picture and glow loops. */
   active: boolean;
   reduceMotion: boolean;
   /** Layered radial gradients (CSS syntax), shown while the picture loads or if it can't. */
@@ -36,42 +43,40 @@ type TodayCardProps = {
 };
 
 /**
- * One full-height card on the Today feed: a slowly zooming northern-lights picture over a gradient,
- * a drifting glow, and whatever the card holds. The card in view is full size; the others
- * shrink a little and dim.
+ * One page of the Today feed, the full size of the screen: a slowly zooming northern-lights
+ * picture over a gradient, edge to edge, with a drifting glow and whatever the card holds.
+ * The picture runs under the status bar and the tab bar; the card's own text and buttons stay
+ * inside the insets, so they read exactly as they did when this was a card.
  */
-export function TodayCard({ height, active, reduceMotion, gradient, base, photo, glow, label, children, ref }: TodayCardProps) {
+export function TodayCard({ height, insetTop, insetBottom, active, reduceMotion, gradient, base, photo, glow, label, children, ref }: TodayCardProps) {
+  const still = reduceMotion || !active;
   return (
     <Animated.View
-      ref={ref}
       accessibilityLabel={label}
-      style={[
-        styles.card,
-        { height, backgroundColor: base, experimental_backgroundImage: gradient },
-        { opacity: active ? 1 : 0.6, transform: [{ scale: active ? 1 : 0.94 }] },
-        !reduceMotion && { transitionProperty: ['opacity', 'transform'], transitionDuration: 500, transitionTimingFunction: EASE_OUT },
-      ]}>
-      <Animated.View style={[styles.photo, loop(reduceMotion, ZOOM, 24000)]}>
+      style={[styles.card, { height: insetTop + height + insetBottom, backgroundColor: base, experimental_backgroundImage: gradient }]}>
+      <Animated.View style={[styles.photo, loop(still, ZOOM, 24000)]}>
         <Image source={photo} style={StyleSheet.absoluteFill} contentFit="cover" transition={300} />
       </Animated.View>
       <View style={styles.shade} />
-      <Animated.View
-        pointerEvents="none"
-        style={[
-          styles.glow,
-          {
-            left: glow.left,
-            top: glow.top,
-            width: glow.width,
-            height: glow.height,
-            opacity: glow.opacity,
-            experimental_backgroundImage: `radial-gradient(${glow.color} 0%, transparent 70%)`,
-          },
-          glow.rotate ? { transform: [{ rotate: glow.rotate }] } : null,
-          loop(reduceMotion, glow.drift === 'out' ? DRIFT : DRIFT_BACK, glow.duration),
-        ]}
-      />
-      {children}
+      <View ref={ref} style={[styles.content, { top: insetTop, bottom: insetBottom }]}>
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.glow,
+            {
+              left: glow.left,
+              top: glow.top,
+              width: glow.width,
+              height: glow.height,
+              opacity: glow.opacity,
+              experimental_backgroundImage: `radial-gradient(${glow.color} 0%, transparent 70%)`,
+            },
+            glow.rotate ? { transform: [{ rotate: glow.rotate }] } : null,
+            loop(still, glow.drift === 'out' ? DRIFT : DRIFT_BACK, glow.duration),
+          ]}
+        />
+        {children}
+      </View>
     </Animated.View>
   );
 }
@@ -90,9 +95,9 @@ export function CardHeading({ top, eyebrow, title, style, titleStyle }: CardHead
   return (
     <Animated.View style={[styles.heading, { top: `${top * 100}%` }, style]}>
       <Text style={styles.eyebrow}>{eyebrow}</Text>
-      <Text style={[styles.title, titleStyle]} accessibilityRole="header">
+      <BalancedText style={[styles.title, titleStyle]} accessibilityRole="header">
         {title}
-      </Text>
+      </BalancedText>
     </Animated.View>
   );
 }
@@ -102,9 +107,13 @@ export const glass = (alpha: number) => ({ backgroundColor: `rgba(255, 255, 255,
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 40,
-    borderCurve: 'continuous',
     overflow: 'hidden',
+  },
+  /** Where the card's text and buttons live: the screen, minus the status bar and the tab bar. */
+  content: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
   },
   photo: {
     position: 'absolute',

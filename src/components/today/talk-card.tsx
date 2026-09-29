@@ -19,7 +19,11 @@ const DOT_BLINK = {
 };
 
 type TalkCardProps = {
+  /** Height of the card's content, between the two insets. */
   height: number;
+  /** Space kept clear at the top of the page, and at the bottom for the tab bar. */
+  insetTop: number;
+  insetBottom: number;
   active: boolean;
   reduceMotion: boolean;
   /** While typing an answer, the feed stops scrolling so the card stays above the keyboard. */
@@ -36,7 +40,7 @@ type TalkCardProps = {
  * can stop whenever they like ("that's it"); after MAX_ASKS answers it stops by itself.
  * The answers are then pieced together into one dream and interpreted.
  */
-export function TalkCard({ height, active, reduceMotion, onWritingChange, onSubmit, onTalkOutLoud }: TalkCardProps) {
+export function TalkCard({ height, insetTop, insetBottom, active, reduceMotion, onWritingChange, onSubmit, onTalkOutLoud }: TalkCardProps) {
   const card = useRef<View>(null);
   const input = useRef<TextInput>(null);
   const [fragments, setFragments] = useState<Fragment[]>([]);
@@ -105,6 +109,8 @@ export function TalkCard({ height, active, reduceMotion, onWritingChange, onSubm
     <TodayCard
       ref={card}
       height={height}
+      insetTop={insetTop}
+      insetBottom={insetBottom}
       active={active}
       reduceMotion={reduceMotion}
       label="talk it through"

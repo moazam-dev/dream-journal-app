@@ -9,8 +9,9 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-import { BrandColors, Colors, NightColors, SettingsColors, VoiceColors } from '@/constants/theme';
+import { BrandColors, Colors, NightColors, SettingsColors } from '@/constants/theme';
 import { PERSONALIZING_BACKGROUND } from '@/utils/personalize';
 
 /** Sign-in and onboarding screens swap with a quick fade (iOS; Android uses its own). */
@@ -39,7 +40,8 @@ export default function RootLayout() {
   if (!ready) return null;
 
   return (
-    <>
+    // Needed for the drag along Today's glass tab bar.
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style="dark" />
       <Stack
         screenOptions={{
@@ -86,6 +88,11 @@ export default function RootLayout() {
           name="personalizing"
           options={{ headerShown: false, animation: 'fade', animationDuration: QUICK_FADE_MS, gestureEnabled: false, contentStyle: { backgroundColor: PERSONALIZING_BACKGROUND } }}
         />
+        {/* The paywall: once on the way in (after the loading screen), then over any locked feature. */}
+        <Stack.Screen
+          name="paywall"
+          options={{ headerShown: false, animation: 'fade', animationDuration: QUICK_FADE_MS, gestureEnabled: false, contentStyle: { backgroundColor: '#000000' } }}
+        />
         {/* Today, Visualize, Garden, Entries and Patterns: the tabs, switched instantly. */}
         <Stack.Screen
           name="(tabs)"
@@ -105,10 +112,12 @@ export default function RootLayout() {
           options={{
             headerShown: false,
             presentation: 'fullScreenModal',
-            contentStyle: { backgroundColor: VoiceColors.background },
+            // The night blue the Voice Agent design's backdrop sits on, so there is no
+            // flash of another colour while the screen comes up.
+            contentStyle: { backgroundColor: '#0b0f1f' },
           }}
         />
       </Stack>
-    </>
+    </GestureHandlerRootView>
   );
 }

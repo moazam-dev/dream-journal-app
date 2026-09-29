@@ -134,6 +134,9 @@ export function useVoiceAgent(dream: DreamContext | null) {
           // Deepgram is ready: start streaming the microphone.
           audio.toggleRecording(!mutedRef.current);
           dispatch({ type: 'ready' });
+          // The greeting is spoken, not sent back as a ConversationText on every model, so
+          // put it in the transcript here. The reducer drops it if Deepgram does send it.
+          if (greeting) dispatch({ type: 'transcript', role: 'assistant', text: greeting });
           break;
         case 'UserStartedSpeaking':
           // Barge-in: stop the agent's voice right away.
@@ -164,9 +167,11 @@ export function useVoiceAgent(dream: DreamContext | null) {
     };
 
     // 4. The WebSocket to Deepgram.
+    const settings = buildSettings({ dream, history: transcriptRef.current });
+    const greeting = settings.agent.greeting;
     const client = new VoiceAgentClient({
       token,
-      settings: buildSettings({ dream, history: transcriptRef.current }),
+      settings,
       handlers: {
         onMessage: (message) => {
           if (isCurrent()) handleMessage(message);
@@ -213,6 +218,18 @@ export function useVoiceAgent(dream: DreamContext | null) {
     dispatch({ type: 'ended' });
   }, [stopSession]);
 
+  /**
+   * Cuts the companion off mid-sentence and hands the floor back. Same thing that happens when
+   * the user simply talks over it, but on purpose: the design's "skip" button and tapping the
+   * orb while afterdream is speaking.
+   */
+  const interrupt = useCallback(() => {
+    const session = sessionRef.current;
+    if (!session || session.cancelled) return;
+    session.queue?.clear();
+    dispatch({ type: 'userStartedSpeaking' });
+  }, []);
+
   const toggleMute = useCallback(() => {
     mutedRef.current = !mutedRef.current;
     const session = sessionRef.current;
@@ -250,5 +267,5 @@ export function useVoiceAgent(dream: DreamContext | null) {
     };
   }, [stopSession]);
 
-  return { state, inputLevel, outputLevel, start, end, toggleMute };
+  return { state, inputLevel, outputLevel, start, end, interrupt, toggleMute };
 }

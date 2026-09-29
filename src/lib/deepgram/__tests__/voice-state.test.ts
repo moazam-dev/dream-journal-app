@@ -65,6 +65,26 @@ describe('voiceReducer', () => {
     ]);
   });
 
+  it('does not repeat the greeting when Deepgram sends it back', () => {
+    const greeting = 'Hey, tell me about your dream.';
+    const state = run([
+      // The screen puts the greeting up as soon as it is sent...
+      { type: 'transcript', role: 'assistant', text: greeting },
+      // ...and Deepgram sends the same line back as a ConversationText.
+      { type: 'transcript', role: 'assistant', text: greeting },
+    ]);
+    assert.deepEqual(state.transcript, [{ id: 1, role: 'assistant', text: greeting }]);
+  });
+
+  it('does not repeat a line the current bubble already ends with', () => {
+    const state = run([
+      { type: 'transcript', role: 'user', text: 'I was in a city.' },
+      { type: 'transcript', role: 'user', text: 'It was empty.' },
+      { type: 'transcript', role: 'user', text: 'It was empty.' },
+    ]);
+    assert.deepEqual(state.transcript, [{ id: 1, role: 'user', text: 'I was in a city. It was empty.' }]);
+  });
+
   it('keeps the transcript across a reconnect', () => {
     const talked = run([{ type: 'connect' }, { type: 'ready' }, { type: 'transcript', role: 'user', text: 'Hi' }]);
     const reconnecting = run([{ type: 'disconnected' }, { type: 'connect' }], talked);

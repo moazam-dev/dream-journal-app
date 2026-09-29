@@ -138,10 +138,13 @@ export default function PersonalizingScreen() {
   );
 }
 
-/** Clear onboarding off the stack so "back" from Home doesn't return to it. */
+/**
+ * Clear onboarding off the stack so "back" from Home doesn't return to it, then show the
+ * paywall once. Its ✕ ("maybe later") is what drops them on Home.
+ */
 function enterHome() {
   if (router.canDismiss()) router.dismissAll();
-  router.replace('/home');
+  router.replace({ pathname: '/paywall', params: { first: '1' } });
 }
 
 const styles = StyleSheet.create({

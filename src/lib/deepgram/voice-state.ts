@@ -80,6 +80,9 @@ export function voiceReducer(state: VoiceState, action: VoiceAction): VoiceState
       const last = state.transcript[state.transcript.length - 1];
       // Several messages in a row from the same speaker read better as one bubble.
       if (last && last.role === action.role) {
+        // The greeting is put in the transcript as soon as it is sent, and Deepgram sends it
+        // back as a ConversationText too. Don't say the same thing twice.
+        if (last.text === text || last.text.endsWith(text)) return state;
         const merged = { ...last, text: `${last.text} ${text}` };
         return { ...state, transcript: [...state.transcript.slice(0, -1), merged] };
       }

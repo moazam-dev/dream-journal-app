@@ -7,6 +7,9 @@ import type { WeekDay } from '@/utils/entries';
 /** Soft slate for the count and the days not yet logged. */
 const SLATE = '#8FA3B5';
 
+/** Height of the streak row, which floats over the top of the Today feed. */
+export const STREAK_BAR_HEIGHT = 52;
+
 type StreakBarProps = {
   /** Nights in a row with a dream. */
   streak: number;
@@ -45,7 +48,7 @@ export function StreakBar({ streak, week }: StreakBarProps) {
 
 const styles = StyleSheet.create({
   row: {
-    height: 52,
+    height: STREAK_BAR_HEIGHT,
     paddingLeft: 34,
     paddingRight: 30,
     flexDirection: 'row',

@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { BalancedText } from '@/components/balanced-text';
 import { BrandFonts } from '@/constants/theme';
 import type { Quote } from '@/utils/today';
 
@@ -8,7 +9,11 @@ import { ShareIcon } from './icons';
 import { glass, TodayCard } from './today-card';
 
 type QuoteCardProps = {
+  /** Height of the card's content, between the two insets. */
   height: number;
+  /** Space kept clear at the top of the page, and at the bottom for the tab bar. */
+  insetTop: number;
+  insetBottom: number;
   active: boolean;
   reduceMotion: boolean;
   quote: Quote;
@@ -20,10 +25,12 @@ type QuoteCardProps = {
 };
 
 /** Card 3: a dream quote that changes every day, to share or keep. */
-export function QuoteCard({ height, active, reduceMotion, quote, date, saved, onShare, onToggleSave }: QuoteCardProps) {
+export function QuoteCard({ height, insetTop, insetBottom, active, reduceMotion, quote, date, saved, onShare, onToggleSave }: QuoteCardProps) {
   return (
     <TodayCard
       height={height}
+      insetTop={insetTop}
+      insetBottom={insetBottom}
       active={active}
       reduceMotion={reduceMotion}
       label="today's thought"
@@ -36,9 +43,9 @@ export function QuoteCard({ height, active, reduceMotion, quote, date, saved, on
       {/* Centred in the space between the date and the buttons. */}
       <View style={styles.body} accessible accessibilityLabel={`${quote.text} — ${quote.by}`}>
         <Text style={styles.mark}>“</Text>
-        <Text style={styles.quote} numberOfLines={7} adjustsFontSizeToFit minimumFontScale={0.7}>
+        <BalancedText style={styles.quote} numberOfLines={7} adjustsFontSizeToFit minimumFontScale={0.7}>
           {quote.text}
-        </Text>
+        </BalancedText>
         <Text style={styles.by}>— {quote.by}</Text>
       </View>
 

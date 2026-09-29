@@ -1,5 +1,5 @@
-import { StyleSheet, View } from 'react-native';
-import Animated from 'react-native-reanimated';
+import { StyleSheet, View, type ViewStyle } from 'react-native';
+import Animated, { type CSSTransitionProperties } from 'react-native-reanimated';
 
 import type { GoalShape as Shape } from '@/utils/goals';
 
@@ -26,12 +26,11 @@ const SPIN = {
 /** The little drawing on a goal tile. It bobs gently; the ring also spins. */
 export function GoalShape({ shape, color, bobDelay, reduceMotion }: GoalShapeProps) {
   // Colour swaps (tile picked / un-picked) ease rather than snap.
-  const fade = (...props: string[]) =>
-    ({
-      transitionProperty: props,
-      transitionDuration: reduceMotion ? 0 : 350,
-      transitionTimingFunction: 'ease',
-    }) as const;
+  const fade = (...props: (keyof ViewStyle)[]): CSSTransitionProperties<ViewStyle> => ({
+    transitionProperty: props,
+    transitionDuration: reduceMotion ? 0 : 350,
+    transitionTimingFunction: 'ease',
+  });
   const fill = [{ backgroundColor: color }, fade('backgroundColor')];
 
   return (

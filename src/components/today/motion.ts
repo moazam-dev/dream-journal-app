@@ -1,4 +1,5 @@
-import { cubicBezier } from 'react-native-reanimated';
+import type { ViewStyle } from 'react-native';
+import { cubicBezier, type CSSTransitionProperties, type CSSTransitionProperty } from 'react-native-reanimated';
 
 // Keyframes from the Afterdream Today design's CSS (@keyframes tDrift, tZoom, …).
 export const DRIFT = {
@@ -90,8 +91,10 @@ export function loop(reduceMotion: boolean, name: object, duration: number) {
 }
 
 /** Smoothly changes colours and sizes, like the design's `transition: … .3s ease`. */
-export function ease(reduceMotion: boolean, properties: string[], duration = 300) {
-  return reduceMotion
-    ? null
-    : { transitionProperty: properties, transitionDuration: duration, transitionTimingFunction: 'ease' as const };
+export function ease(
+  reduceMotion: boolean,
+  properties: CSSTransitionProperty<ViewStyle>,
+  duration = 300,
+): CSSTransitionProperties<ViewStyle> | null {
+  return reduceMotion ? null : { transitionProperty: properties, transitionDuration: duration, transitionTimingFunction: 'ease' };
 }

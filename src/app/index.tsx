@@ -6,6 +6,7 @@ import Animated, { cubicBezier, useReducedMotion } from 'react-native-reanimated
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BrandColors, BrandFonts } from '@/constants/theme';
+import { AppleSignInSheet } from '@/components/auth/apple-sign-in-sheet';
 import { Ghost, STAR_CENTER } from '@/components/ghost/ghost';
 import { SignInSheet } from '@/components/ghost/sign-in-sheet';
 
@@ -40,7 +41,8 @@ const Ease = {
  * Welcome screen ("/", the first screen), from the Afterdream Welcome Ghost design:
  * a lime star pops in on black, lime floods the screen, the ghost rises beside the star,
  * then "what did you dream about?" and the sign-in sheet come in. The ghost floats,
- * blinks and hops when the terms are accepted, then flies off on "Continue with Apple".
+ * blinks and hops when the terms are accepted, then flies off once the Apple sheet
+ * and the phone's Face ID check are through.
  */
 export default function WelcomeScreen() {
   const { width, height } = useWindowDimensions();
@@ -51,6 +53,7 @@ export default function WelcomeScreen() {
   const [agreed, setAgreed] = useState(false);
   const [hop, setHop] = useState(false);
   const [signing, setSigning] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const hopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -75,8 +78,13 @@ export default function WelcomeScreen() {
 
   function handleContinue() {
     if (!agreed || signing) return;
-    setSigning(true);
-    // There is no Sign in with Apple yet, so this goes straight to the "You're in" screen.
+    // The sheet says what would be shared, then the phone's own Face ID confirms them.
+    setSheetOpen(true);
+  }
+
+  function handleSignedIn() {
+    setSheetOpen(false);
+    setSigning(true); // the ghost flies off
     // `replace` (not `push`) so "back" doesn't return here.
     router.replace('/welcome-in');
   }
@@ -183,6 +191,13 @@ export default function WelcomeScreen() {
           reduceMotion={reduceMotion}
         />
       </Animated.View>
+
+      <AppleSignInSheet
+        visible={sheetOpen}
+        onCancel={() => setSheetOpen(false)}
+        onSignedIn={handleSignedIn}
+        reduceMotion={reduceMotion}
+      />
 
       {/* Development builds only (never in a release): skip sign-in and onboarding. */}
       {__DEV__ && (

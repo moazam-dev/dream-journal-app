@@ -30,7 +30,11 @@ const RED = '#e05a5a';
 const START_DELAY_MS = 350;
 
 type WriteCardProps = {
+  /** Height of the card's content, between the two insets. */
   height: number;
+  /** Space kept clear at the top of the page, and at the bottom for the tab bar. */
+  insetTop: number;
+  insetBottom: number;
   active: boolean;
   reduceMotion: boolean;
   greeting: string;
@@ -38,9 +42,9 @@ type WriteCardProps = {
   onWritingChange: (writing: boolean) => void;
   /** Called with the written dream. */
   onSubmit: (text: string) => void;
-  /** Called with what they said (once it has been turned into text) and how long they talked. */
-  onYap: (text: string, seconds: number) => void;
-  /** Opens the live voice companion. */
+  /** Called with a plain recording (once it has been turned into text) and how long it ran. */
+  onRecorded: (text: string, seconds: number) => void;
+  /** Opens the live voice companion, which starts talking on its own. */
   onSpeak: () => void;
   /** Starts yapping or typing as soon as the card shows (from Patterns' "Had another dream?"). */
   start?: 'yap' | 'type';
@@ -50,10 +54,11 @@ type WriteCardProps = {
 
 /**
  * Card 1: "what did you dream about last night?", centred, with three buttons along the
- * bottom: type (opens a writing space, where ↑ sends the dream), yap (the big one: say it
- * out loud, stopping sends it to be interpreted) and speak (the live voice companion).
+ * bottom: record (left, the microphone: just say the dream into the phone, stopping sends
+ * it to be interpreted), yap (the big one in the middle: opens the voice companion, which
+ * starts the conversation on its own) and type (opens a writing space, where ↑ sends it).
  */
-export function WriteCard({ height, active, reduceMotion, greeting, onWritingChange, onSubmit, onYap, onSpeak, start, onStarted }: WriteCardProps) {
+export function WriteCard({ height, insetTop, insetBottom, active, reduceMotion, greeting, onWritingChange, onSubmit, onRecorded, onSpeak, start, onStarted }: WriteCardProps) {
   const card = useRef<View>(null);
   const [draft, setDraft] = useState('');
   const [writing, setWriting] = useState(false);
@@ -62,7 +67,7 @@ export function WriteCard({ height, active, reduceMotion, greeting, onWritingCha
 
   // How long the last recording ran, read when it stops (the recorder resets after).
   const spoken = useRef(0);
-  const voice = useDreamRecorder((text) => onYap(text, spoken.current));
+  const voice = useDreamRecorder((text) => onRecorded(text, spoken.current));
   const recording = voice.phase === 'recording';
   const busy = voice.phase === 'transcribing';
 
@@ -82,7 +87,7 @@ export function WriteCard({ height, active, reduceMotion, greeting, onWritingCha
     // Waits for the screen to finish sliding in before opening the keyboard or the mic.
     const timer = setTimeout(() => {
       if (start === 'type') startWriting();
-      else if (voice.phase === 'idle') voice.start();
+      else onSpeak();
       onStarted?.();
     }, START_DELAY_MS);
     return () => clearTimeout(timer);
@@ -110,16 +115,21 @@ export function WriteCard({ height, active, reduceMotion, greeting, onWritingCha
     voice.stopAndTranscribe();
   }
 
-  function yapLabel() {
+  function recordLabel() {
     if (recording) return formatClock(voice.durationMillis / 1000);
     if (busy) return '…';
-    return 'yap';
+    return 'record';
   }
+
+  // The recorder is a small button until it is running, when it takes the big one's size.
+  const recordSize = recording || busy ? YAP_SIZE : SMALL_SIZE;
 
   return (
     <TodayCard
       ref={card}
       height={height}
+      insetTop={insetTop}
+      insetBottom={insetBottom}
       active={active}
       reduceMotion={reduceMotion}
       label="tell your dream"
@@ -179,10 +189,7 @@ export function WriteCard({ height, active, reduceMotion, greeting, onWritingCha
         </Animated.View>
       ) : (
         <Animated.View style={[styles.controls, rise(reduceMotion, 0, 400)]}>
-          <SideButton label="type" hidden={recording || busy} onPress={startWriting} reduceMotion={reduceMotion} accessibilityLabel="Type your dream">
-            <PenIcon />
-          </SideButton>
-
+          {/* Left: just record the dream. No conversation, no connection — the phone listens. */}
           <View style={styles.column}>
             <View style={styles.slot}>
               {recording && !reduceMotion && (
@@ -195,28 +202,71 @@ export function WriteCard({ height, active, reduceMotion, greeting, onWritingCha
               )}
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={recording ? 'Stop recording' : 'Yap: say your dream out loud'}
+                accessibilityLabel={recording ? 'Stop recording' : 'Record your dream'}
                 accessibilityState={{ busy }}
                 disabled={busy}
                 onPress={recording ? stopRecording : voice.start}
+                hitSlop={8}
                 style={({ pressed }) => pressed && styles.pressed}>
                 <Animated.View
-                  style={[styles.yap, { backgroundColor: recording ? '#fff' : 'rgba(255, 255, 255, 0.26)' }, ease(reduceMotion, ['backgroundColor'])]}>
-                  {recording ? <View style={styles.stop} /> : <WaveIcon dim={busy} />}
+                  style={[
+                    styles.round,
+                    {
+                      width: recordSize,
+                      height: recordSize,
+                      borderRadius: recordSize / 2,
+                      backgroundColor: recording ? '#fff' : 'rgba(255, 255, 255, 0.2)',
+                    },
+                    ease(reduceMotion, ['backgroundColor', 'width', 'height', 'borderRadius']),
+                  ]}>
+                  {recording ? <View style={styles.stop} /> : <MicIcon dim={busy} />}
                 </Animated.View>
               </Pressable>
             </View>
             <Text style={styles.label} accessibilityLiveRegion="polite">
-              {yapLabel()}
+              {recordLabel()}
             </Text>
           </View>
 
-          <SideButton label="speak" hidden={recording || busy} onPress={onSpeak} reduceMotion={reduceMotion} accessibilityLabel="Speak with your dream companion">
-            <MicIcon />
+          {/* Middle: yap — the companion picks up and starts asking straight away. */}
+          <BigButton
+            label="yap"
+            hidden={recording || busy}
+            onPress={onSpeak}
+            reduceMotion={reduceMotion}
+            accessibilityLabel="Yap: talk your dream through with your companion"
+          />
+
+          <SideButton label="type" hidden={recording || busy} onPress={startWriting} reduceMotion={reduceMotion} accessibilityLabel="Type your dream">
+            <PenIcon />
           </SideButton>
         </Animated.View>
       )}
     </TodayCard>
+  );
+}
+
+type BigButtonProps = {
+  label: string;
+  accessibilityLabel: string;
+  hidden: boolean;
+  onPress: () => void;
+  reduceMotion: boolean;
+};
+
+/** The big one in the middle: opens the voice companion. */
+function BigButton({ label, accessibilityLabel, hidden, onPress, reduceMotion }: BigButtonProps) {
+  return (
+    <Animated.View style={[styles.column, { opacity: hidden ? 0 : 1, pointerEvents: hidden ? 'none' : 'auto' }, ease(reduceMotion, ['opacity'])]}>
+      <View style={styles.slot}>
+        <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel} onPress={onPress} style={({ pressed }) => pressed && styles.pressed}>
+          <View style={styles.yap}>
+            <WaveIcon dim={false} />
+          </View>
+        </Pressable>
+      </View>
+      <Text style={styles.label}>{label}</Text>
+    </Animated.View>
   );
 }
 
@@ -264,10 +314,10 @@ function WaveIcon({ dim }: { dim: boolean }) {
   );
 }
 
-/** Microphone, for speaking with the companion. */
-function MicIcon() {
+/** Microphone, for recording the dream straight into the phone. */
+function MicIcon({ dim }: { dim: boolean }) {
   return (
-    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" opacity={dim ? 0.4 : 1}>
       <Rect x={9} y={3} width={6} height={11} rx={3} stroke="#fff" strokeWidth={2} />
       <Path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3" stroke="#fff" strokeWidth={2} strokeLinecap="round" />
     </Svg>
@@ -376,6 +426,12 @@ const styles = StyleSheet.create({
     width: YAP_SIZE,
     height: YAP_SIZE,
     borderRadius: YAP_SIZE / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.26)',
+  },
+  /** The recorder, which grows from the small size to the big one while it runs. */
+  round: {
     alignItems: 'center',
     justifyContent: 'center',
   },

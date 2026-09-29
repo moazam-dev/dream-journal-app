@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
@@ -11,6 +12,8 @@ import { DreamAnalysis } from '@/components/dream/dream-analysis';
 import { animate, EASE_OUT, FADE, TOAST } from '@/components/today/motion';
 import { BrandColors, BrandFonts } from '@/constants/theme';
 import { useDream } from '@/hooks/use-dreams';
+import { usePaywall } from '@/hooks/use-paywall';
+import { loadConversation, type ConversationLine } from '@/lib/conversations';
 import { isVoiceAgentAvailable } from '@/lib/deepgram/native-audio';
 import { analyzeDream } from '@/services/dreams';
 import { getErrorMessage } from '@/utils/errors';
@@ -23,6 +26,7 @@ const TOAST_MS = 2600;
 const VISUALIZE_HEIGHT = 56;
 /** Between the audio bar and "visualize". */
 const FOOTER_GAP = 10;
+const LOGO = require('@/assets/images/afterdream-logo.png');
 
 /**
  * A dream's page ("/dream/<id>"), opened from its row on Entries: the dream in its card
@@ -38,6 +42,8 @@ export default function DreamScreen() {
   const { dream, loading, error, reload, setDream } = useDream(id);
 
   const [tabShown, setTab] = useState<DreamTab>(tab === 'analysis' ? 'analysis' : 'transcript');
+  // Dreams told out loud to the companion kept their conversation on the phone; read it once.
+  const [conversation] = useState(() => loadConversation(id));
   const [switchWidth, setSwitchWidth] = useState(0);
   const [reading, setReading] = useState(false);
   const [toast, setToast] = useState<{ id: number; text: string } | null>(null);
@@ -49,6 +55,9 @@ export default function DreamScreen() {
     },
     []
   );
+
+  // Talking a dream through and turning it into a picture are both paid.
+  const { guard, reminder } = usePaywall();
 
   const pillWidth = Math.max(0, (switchWidth - 8) / 2);
   const footerBottom = Math.max(insets.bottom, 16);
@@ -82,10 +91,12 @@ export default function DreamScreen() {
     }
   }
 
-  async function visualize() {
-    if (!dream || reading) return;
-    if (dream.analysis_status !== 'completed' && !(await read())) return;
-    router.push({ pathname: '/painting/[id]', params: { id: dream.id, from: 'dream' } });
+  function visualize() {
+    guard('visualize', async () => {
+      if (!dream || reading) return;
+      if (dream.analysis_status !== 'completed' && !(await read())) return;
+      router.push({ pathname: '/painting/[id]', params: { id: dream.id, from: 'dream' } });
+    });
   }
 
   if (!dream) {
@@ -129,7 +140,11 @@ export default function DreamScreen() {
       <StatusBar style="light" />
       <TopBar
         onBack={goBack}
-        onTalk={isVoiceAgentAvailable() ? () => router.push({ pathname: '/voice', params: { dreamId: dream.id } }) : undefined}
+        onTalk={
+          isVoiceAgentAvailable()
+            ? () => guard('voice', () => router.push({ pathname: '/voice', params: { dreamId: dream.id } }))
+            : undefined
+        }
       />
 
       <ScrollView
@@ -171,9 +186,13 @@ export default function DreamScreen() {
         <Animated.View key={tabShown} style={[styles.body, animate(reduceMotion, { animationName: FADE, animationDuration: 300 })]}>
           {tabShown === 'transcript' ? (
             <View style={styles.transcript}>
-              <Text style={styles.transcriptText} selectable>
-                {dream.dream_text.trim()}
-              </Text>
+              {conversation ? (
+                <Conversation lines={conversation} />
+              ) : (
+                <Text style={styles.transcriptText} selectable>
+                  {dream.dream_text.trim()}
+                </Text>
+              )}
               {people.length > 0 && <Tags label="who was there" tags={people} />}
               {places.length > 0 && <Tags label="where it was" tags={places} />}
             </View>
@@ -208,6 +227,38 @@ export default function DreamScreen() {
             {toast.text}
           </Animated.Text>
         </View>
+      )}
+
+      {reminder}
+    </View>
+  );
+}
+
+/**
+ * A dream told out loud, as it was told: every question the companion asked and every
+ * answer given. Shown instead of the plain text, which is only the dreamer's own half.
+ */
+function Conversation({ lines }: { lines: ConversationLine[] }) {
+  return (
+    <View style={styles.chat}>
+      <Text style={styles.chatLabel}>what you told your companion</Text>
+      {lines.map((line, i) =>
+        line.role === 'user' ? (
+          <View key={i} style={styles.youRow}>
+            <Text style={styles.youBubble} selectable>
+              {line.text}
+            </Text>
+          </View>
+        ) : (
+          <View key={i} style={styles.aiRow}>
+            <View style={styles.avatar}>
+              <Image source={LOGO} style={styles.avatarLogo} contentFit="contain" tintColor={BrandColors.ink} />
+            </View>
+            <Text style={styles.aiBubble} selectable>
+              {line.text}
+            </Text>
+          </View>
+        )
       )}
     </View>
   );
@@ -388,6 +439,71 @@ const styles = StyleSheet.create({
     fontSize: 19,
     lineHeight: 29,
     letterSpacing: -0.2,
+    color: 'rgba(255,255,255,0.92)',
+  },
+  chat: {
+    gap: 10,
+  },
+  chatLabel: {
+    marginBottom: 4,
+    fontFamily: BrandFonts.medium,
+    fontSize: 12,
+    lineHeight: 15,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: 'rgba(255,255,255,0.45)',
+  },
+  youRow: {
+    alignItems: 'flex-end',
+  },
+  youBubble: {
+    maxWidth: '85%',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    overflow: 'hidden',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderBottomRightRadius: 6,
+    borderBottomLeftRadius: 20,
+    backgroundColor: BrandColors.lime,
+    fontFamily: BrandFonts.regular,
+    fontSize: 15,
+    lineHeight: 21,
+    color: '#111',
+  },
+  aiRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 8,
+  },
+  avatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: BrandColors.lime,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarLogo: {
+    width: 15,
+    height: 15,
+  },
+  aiBubble: {
+    flexShrink: 1,
+    maxWidth: '85%',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    overflow: 'hidden',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderBottomRightRadius: 20,
+    borderBottomLeftRadius: 6,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    fontFamily: BrandFonts.regular,
+    fontSize: 15,
+    lineHeight: 22,
     color: 'rgba(255,255,255,0.92)',
   },
   tags: {

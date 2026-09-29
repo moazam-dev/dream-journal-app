@@ -6,6 +6,7 @@ import { useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { NightColors } from '@/constants/theme';
+import { AppleSignInSheet } from '@/components/auth/apple-sign-in-sheet';
 import { AGREEMENT_HERO_HEIGHT, AgreementHero } from '@/components/agreement/agreement-hero';
 import { Consent } from '@/components/agreement/consent';
 import { SlideCarousel } from '@/components/agreement/slide-carousel';
@@ -26,7 +27,8 @@ const FIXED_HEIGHT = 306;
  * Agreement screen ("/agreement"), shown after the welcome screen, from the
  * Afterdream Agreement design: the lime logo rises out of a line above its own
  * reflection, three lines about the app take turns, and "Continue with Apple"
- * unlocks once the Terms and Privacy Policy are accepted.
+ * unlocks once the Terms and Privacy Policy are accepted — which opens the sign-in
+ * sheet and the phone's Face ID check.
  */
 export default function AgreementScreen() {
   const { height } = useWindowDimensions();
@@ -35,10 +37,17 @@ export default function AgreementScreen() {
 
   const [agreed, setAgreed] = useState(false);
   const [signing, setSigning] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+
   function handleContinue() {
-    if (!agreed) return;
+    if (!agreed || signing) return;
+    // The sheet says what would be shared, then the phone's own Face ID confirms them.
+    setSheetOpen(true);
+  }
+
+  function handleSignedIn() {
+    setSheetOpen(false);
     setSigning(true);
-    // There is no Sign in with Apple yet, so this goes straight to the "You're in" screen.
     // `replace` (not `push`) so "back" doesn't return here.
     router.replace('/welcome-in');
   }
@@ -69,6 +78,13 @@ export default function AgreementScreen() {
           reduceMotion={reduceMotion}
         />
       </View>
+
+      <AppleSignInSheet
+        visible={sheetOpen}
+        onCancel={() => setSheetOpen(false)}
+        onSignedIn={handleSignedIn}
+        reduceMotion={reduceMotion}
+      />
     </View>
   );
 }

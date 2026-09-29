@@ -14,7 +14,11 @@ import { CardHeading, TodayCard } from './today-card';
 const RED = '#e05a5a';
 
 type FutureCardProps = {
+  /** Height of the card's content, between the two insets. */
   height: number;
+  /** Space kept clear at the top of the page, and at the bottom for the tab bar. */
+  insetTop: number;
+  insetBottom: number;
   active: boolean;
   reduceMotion: boolean;
   name: string;
@@ -28,7 +32,7 @@ type FutureCardProps = {
  * Card 4: a voice note to future you. Pick how long it stays locked, tap to start
  * recording, tap again to seal it into the time capsule (kept on the phone).
  */
-export function FutureCard({ height, active, reduceMotion, name, capsuleCount, onSeal, onOpenCapsule }: FutureCardProps) {
+export function FutureCard({ height, insetTop, insetBottom, active, reduceMotion, name, capsuleCount, onSeal, onOpenCapsule }: FutureCardProps) {
   const [lock, setLock] = useState(2);
   const note = useCapsuleRecorder();
   const holding = note.recording;
@@ -45,6 +49,8 @@ export function FutureCard({ height, active, reduceMotion, name, capsuleCount, o
   return (
     <TodayCard
       height={height}
+      insetTop={insetTop}
+      insetBottom={insetBottom}
       active={active}
       reduceMotion={reduceMotion}
       label="note to future you"

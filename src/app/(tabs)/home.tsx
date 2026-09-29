@@ -22,12 +22,13 @@ import { FutureCard } from '@/components/today/future-card';
 import { animate, TOAST } from '@/components/today/motion';
 import { QuoteCard } from '@/components/today/quote-card';
 import { ShareFlow } from '@/components/today/share-flow';
-import { StreakBar } from '@/components/today/streak-bar';
-import { openTab, TAB_BAR_HEIGHT, TabBar, type Tab } from '@/components/today/tab-bar';
+import { StreakBar, STREAK_BAR_HEIGHT } from '@/components/today/streak-bar';
+import { GLASS_BAR_GAP, GLASS_BAR_HEIGHT, openTab, TabBar, type Tab } from '@/components/today/tab-bar';
 import { TalkCard } from '@/components/today/talk-card';
 import { WriteCard } from '@/components/today/write-card';
 import { BrandFonts } from '@/constants/theme';
 import { useDreams } from '@/hooks/use-dreams';
+import { usePaywall } from '@/hooks/use-paywall';
 import { loadCapsules, sealCapsule } from '@/lib/capsules';
 import { isVoiceAgentAvailable } from '@/lib/deepgram/native-audio';
 import { loadProfileName } from '@/lib/profile';
@@ -47,15 +48,8 @@ import {
 } from '@/utils/today';
 
 const CARD_COUNT = 4;
-const GAP = 10;
-/** Space above the first card, and below the last. */
-const EDGE = 6;
-/** Space between the cards and the sides of the screen, so they read as cards. */
-const SIDE = 12;
-/** Just the top of the next card peeks out under the one in view. */
-const PEEK = 40;
-/** Cards never get shorter than this, even on very small phones. */
-const MIN_CARD = 520;
+/** However small the screen, a card keeps at least this much room for its own text. */
+const MIN_CONTENT = 320;
 const TOAST_MS = 2200;
 
 /** What an opened card shows. */
@@ -67,10 +61,11 @@ type OverlayContent =
 type Overlay = OverlayContent & { card: number; rect: CardRect; pill: string; open: boolean };
 
 /**
- * Home ("/home"), from the Afterdream Today design: a vertical feed of four full-height
- * cards (yap or write, talk, today's quote, a note to future you) that snap into place,
- * above a black tab bar. A dream, the quote or the time capsule opens its card into
- * a full screen.
+ * Home ("/home"), from the Afterdream Home - Orb Flow design: four full-screen pages
+ * (yap or write, talk, today's quote, a note to future you) stacked like reels — each one
+ * fills the screen edge to edge and snaps into place as you swipe up. The streak row and the
+ * tab bar float over the pictures; every page keeps its text and buttons clear of both.
+ * A dream, the quote or the time capsule opens its page into an overlay.
  */
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -92,6 +87,8 @@ export default function HomeScreen() {
   const quote = useMemo(() => quoteOfDay(now), [now]);
   // Told dreams, for the streak and this week's days (reloads whenever Home comes back into view).
   const { dreams } = useDreams();
+  // Yapping and time capsules are paid: the guard nudges near the end of the trial, stops after it.
+  const { guard, reminder } = usePaywall();
   const streak = useMemo(() => currentStreak(dreams, now), [dreams, now]);
   const week = useMemo(() => weekDays(dreams, now), [dreams, now]);
 
@@ -114,13 +111,14 @@ export default function HomeScreen() {
   const { start } = useLocalSearchParams<{ start?: string }>();
   const startWith = start === 'yap' || start === 'type' ? start : undefined;
 
-  const cardHeight = Math.max(MIN_CARD, areaHeight - PEEK);
-  const interval = cardHeight + GAP;
-  const contentHeight = EDGE * 2 + CARD_COUNT * cardHeight + (CARD_COUNT - 1) * GAP;
-  const maxScroll = Math.max(0, contentHeight - areaHeight);
-  // The last card can't scroll all the way up, so it snaps to the end instead.
-  const snaps = Array.from({ length: CARD_COUNT }, (_, i) => Math.min(i * interval, maxScroll));
   const tabBarBottom = Math.max(insets.bottom, 8);
+  // A page is the whole screen; its insets keep the words clear of the streak row and the tab bar.
+  const insetTop = insets.top + STREAK_BAR_HEIGHT;
+  const insetBottom = GLASS_BAR_HEIGHT + GLASS_BAR_GAP + tabBarBottom;
+  const pageHeight = areaHeight;
+  const cardHeight = Math.max(MIN_CONTENT, pageHeight - insetTop - insetBottom);
+  const interval = insetTop + cardHeight + insetBottom;
+  const snaps = Array.from({ length: CARD_COUNT }, (_, i) => i * interval);
   const displayName = name ?? 'you';
 
   function onFeedLayout(event: LayoutChangeEvent) {
@@ -206,10 +204,12 @@ export default function HomeScreen() {
             onToast={showToast}
             reduceMotion={reduceMotion}
             bottomInset={insets.bottom}
-            onVisualize={(id) => {
-              router.push({ pathname: '/visualize', params: { id } });
-              closeCard();
-            }}
+            onVisualize={(id) =>
+              guard('visualize', () => {
+                router.push({ pathname: '/visualize', params: { id } });
+                closeCard();
+              })
+            }
             onDone={(wasSaved) => {
               closeCard();
               if (wasSaved) showToast('saved to entries ✦');
@@ -245,17 +245,15 @@ export default function HomeScreen() {
   return (
     <View style={styles.screen} onLayout={(e) => setScreen({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })}>
       <StatusBar style="light" />
-      <View style={{ marginTop: insets.top }}>
-        <StreakBar streak={streak} week={week} />
-      </View>
       <View style={styles.area} onLayout={onFeedLayout}>
         {areaHeight > 0 && (
           <ScrollView
             ref={feed}
             style={StyleSheet.absoluteFill}
-            contentContainerStyle={styles.feed}
             showsVerticalScrollIndicator={false}
             snapToOffsets={snaps}
+            snapToEnd={false}
+            disableIntervalMomentum
             decelerationRate="fast"
             scrollEnabled={!writing}
             keyboardShouldPersistTaps="handled"
@@ -264,13 +262,20 @@ export default function HomeScreen() {
             <View ref={(view) => void (cards.current[0] = view)} collapsable={false}>
               <WriteCard
                 height={cardHeight}
+                insetTop={insetTop}
+                insetBottom={insetBottom}
                 active={active === 0}
                 reduceMotion={reduceMotion}
                 greeting={todayGreeting(name, now.getHours())}
                 onWritingChange={setWriting}
                 onSubmit={(text) => interpret(0, '✎ from your words', { source: 'write', text })}
-                onYap={(text, seconds) => interpret(0, `◉ ${formatClock(Math.max(1, seconds))} of yapping`, { source: 'yap', text })}
-                onSpeak={() => (isVoiceAgentAvailable() ? router.push('/voice') : showToast('speaking needs the full app build ✦'))}
+                onRecorded={(text, seconds) => interpret(0, `◉ ${formatClock(Math.max(1, seconds))} recorded`, { source: 'yap', text })}
+                // Yap opens the companion already talking, so there is nothing to tap twice.
+                onSpeak={() =>
+                  isVoiceAgentAvailable()
+                    ? guard('voice', () => router.push({ pathname: '/voice', params: { autostart: '1' } }))
+                    : showToast('yapping needs the full app build ✦')
+                }
                 start={startWith}
                 onStarted={() => {
                   feed.current?.scrollTo({ y: 0, animated: true });
@@ -281,16 +286,24 @@ export default function HomeScreen() {
             <View ref={(view) => void (cards.current[1] = view)} collapsable={false}>
               <TalkCard
                 height={cardHeight}
+                insetTop={insetTop}
+                insetBottom={insetBottom}
                 active={active === 1}
                 reduceMotion={reduceMotion}
                 onWritingChange={setWriting}
                 onSubmit={(fragments) => interpret(1, `✦ ${fragments.length} fragment${fragments.length > 1 ? 's' : ''}`, { source: 'talk', fragments })}
-                onTalkOutLoud={isVoiceAgentAvailable() ? () => router.push('/voice') : null}
+                onTalkOutLoud={
+                  isVoiceAgentAvailable()
+                    ? () => guard('voice', () => router.push({ pathname: '/voice', params: { autostart: '1' } }))
+                    : null
+                }
               />
             </View>
             <View ref={(view) => void (cards.current[2] = view)} collapsable={false}>
               <QuoteCard
                 height={cardHeight}
+                insetTop={insetTop}
+                insetBottom={insetBottom}
                 active={active === 2}
                 reduceMotion={reduceMotion}
                 quote={quote}
@@ -303,19 +316,28 @@ export default function HomeScreen() {
             <View ref={(view) => void (cards.current[3] = view)} collapsable={false}>
               <FutureCard
                 height={cardHeight}
+                insetTop={insetTop}
+                insetBottom={insetBottom}
                 active={active === 3}
                 reduceMotion={reduceMotion}
                 name={displayName}
                 capsuleCount={capsules.length}
-                onSeal={seal}
-                onOpenCapsule={() => openCard(3, '⧗ time capsule', { kind: 'vault', justSealed: null })}
+                onSeal={(recording, lock) => guard('capsules', () => seal(recording, lock))}
+                onOpenCapsule={() => guard('capsules', () => openCard(3, '⧗ time capsule', { kind: 'vault', justSealed: null }))}
               />
             </View>
           </ScrollView>
         )}
       </View>
 
-      <TabBar current="today" bottomInset={tabBarBottom} onPick={pickTab} />
+      {/* Both float over the pages, so the pictures run edge to edge behind them. */}
+      <View pointerEvents="none" style={[styles.streakRow, { top: insets.top }]}>
+        <StreakBar streak={streak} week={week} />
+      </View>
+      <TabBar current="today" bottomInset={tabBarBottom} onPick={pickTab} floating />
+
+      {/* The end-of-trial nudge for yapping and time capsules; the tab bar carries its own. */}
+      {reminder}
 
       {overlay && screen.width > 0 && (
         <CardOverlay
@@ -334,7 +356,7 @@ export default function HomeScreen() {
       )}
 
       {toast && (
-        <View pointerEvents="none" style={[styles.toastRow, { bottom: TAB_BAR_HEIGHT + tabBarBottom + 20 }]}>
+        <View pointerEvents="none" style={[styles.toastRow, { bottom: insetBottom + 12 }]}>
           <Animated.Text
             key={toast.id}
             accessibilityLiveRegion="polite"
@@ -355,12 +377,13 @@ const styles = StyleSheet.create({
   area: {
     flex: 1,
   },
-  feed: {
-    paddingTop: EDGE,
-    paddingBottom: EDGE,
-    paddingHorizontal: SIDE,
-    gap: GAP,
+  streakRow: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    zIndex: 2,
   },
+
   toastRow: {
     position: 'absolute',
     left: 0,

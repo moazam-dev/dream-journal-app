@@ -2,7 +2,7 @@ import { router, useFocusEffect, useIsFocused } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { useReducedMotion } from 'react-native-reanimated';
+import Animated, { useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { GardenPick, LostCounts } from '@/components/garden/garden-engine';
@@ -240,9 +240,9 @@ export default function GardenScreen() {
   return (
     <View style={styles.screen}>
       <StatusBar style="light" />
-      <View style={[StyleSheet.absoluteFill, styles.wilted, { opacity: wilt && !demo ? 1 : 0 }, ease(reduceMotion, ['opacity'], 1600)]} />
+      <Animated.View style={[StyleSheet.absoluteFill, styles.wilted, { opacity: wilt && !demo ? 1 : 0 }, ease(reduceMotion, ['opacity'], 1600)]} />
 
-      <View style={[styles.scene, { bottom: tabBarHeight, opacity: settled ? 1 : 0 }, ease(reduceMotion, ['opacity'], 600)]}>
+      <Animated.View style={[styles.scene, { bottom: tabBarHeight, opacity: settled ? 1 : 0 }, ease(reduceMotion, ['opacity'], 600)]}>
         <GardenScene
           command={command}
           autoSpin={!reduceMotion}
@@ -253,7 +253,7 @@ export default function GardenScreen() {
           onLost={onLost}
           dom={{ style: styles.web, scrollEnabled: false, bounces: false, overScrollMode: 'never' }}
         />
-      </View>
+      </Animated.View>
       <View pointerEvents="none" style={styles.shade} />
       {!settled && (
         <View pointerEvents="none" style={[styles.fill, { top: insets.top + 326 }]}>
