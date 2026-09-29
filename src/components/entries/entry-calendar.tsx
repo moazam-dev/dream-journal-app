@@ -7,14 +7,13 @@ import { BrandFonts } from '@/constants/theme';
 import type { Dream } from '@/types/dream';
 import { colorFill, dreamColor, type CalendarDay } from '@/utils/entries';
 
-const LETTERS = ['s', 'm', 't', 'w', 't', 'f', 's'];
 const DAY = 38;
 const ROW_GAP = 6;
 
 type EntryCalendarProps = {
   /** "september" */
   monthLabel: string;
-  month: (CalendarDay | null)[];
+  month: CalendarDay[];
   week: CalendarDay[];
   open: boolean;
   reduceMotion: boolean;
@@ -53,14 +52,6 @@ export function EntryCalendar({ monthLabel, month, week, open, reduceMotion, onT
         </Pressable>
       </View>
 
-      <View style={styles.grid} importantForAccessibility="no-hide-descendants">
-        {LETTERS.map((letter, i) => (
-          <View key={i} style={styles.cell}>
-            <Text style={styles.letter}>{letter}</Text>
-          </View>
-        ))}
-      </View>
-
       <Animated.View
         style={[
           styles.monthWrap,
@@ -68,9 +59,9 @@ export function EntryCalendar({ monthLabel, month, week, open, reduceMotion, onT
           !reduceMotion && { transitionProperty: 'height', transitionDuration: 400, transitionTimingFunction: EASE_OUT },
         ]}>
         <View style={[styles.grid, styles.monthGrid]}>
-          {month.map((day, i) => (
-            <View key={day?.key ?? `blank-${i}`} style={styles.cell}>
-              {day && <Day day={day} onPick={onPick} />}
+          {month.map((day) => (
+            <View key={day.key} style={styles.cell}>
+              <Day day={day} onPick={onPick} />
             </View>
           ))}
         </View>
@@ -162,12 +153,6 @@ const styles = StyleSheet.create({
   cell: {
     width: `${100 / 7}%`,
     alignItems: 'center',
-  },
-  letter: {
-    fontFamily: BrandFonts.medium,
-    fontSize: 11,
-    lineHeight: 13,
-    color: 'rgba(255,255,255,0.5)',
   },
   day: {
     width: DAY,

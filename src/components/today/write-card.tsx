@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Keyboard, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import Svg, { Path, Rect } from 'react-native-svg';
@@ -27,6 +27,7 @@ const COLUMN_GAP = 12;
 /** Room the heading takes (greeting plus two lines of title), to centre it in the card. */
 const HEADING_HEIGHT = 110;
 const RED = '#e05a5a';
+const START_DELAY_MS = 350;
 
 type WriteCardProps = {
   height: number;
@@ -41,6 +42,10 @@ type WriteCardProps = {
   onYap: (text: string, seconds: number) => void;
   /** Opens the live voice companion. */
   onSpeak: () => void;
+  /** Starts yapping or typing as soon as the card shows (from Patterns' "Had another dream?"). */
+  start?: 'yap' | 'type';
+  /** Called once `start` has been acted on, so it only happens once. */
+  onStarted?: () => void;
 };
 
 /**
@@ -48,7 +53,7 @@ type WriteCardProps = {
  * bottom: type (opens a writing space, where ↑ sends the dream), yap (the big one: say it
  * out loud, stopping sends it to be interpreted) and speak (the live voice companion).
  */
-export function WriteCard({ height, active, reduceMotion, greeting, onWritingChange, onSubmit, onYap, onSpeak }: WriteCardProps) {
+export function WriteCard({ height, active, reduceMotion, greeting, onWritingChange, onSubmit, onYap, onSpeak, start, onStarted }: WriteCardProps) {
   const card = useRef<View>(null);
   const [draft, setDraft] = useState('');
   const [writing, setWriting] = useState(false);
@@ -71,6 +76,19 @@ export function WriteCard({ height, active, reduceMotion, greeting, onWritingCha
     setWriting(true);
     onWritingChange(true);
   }
+
+  useEffect(() => {
+    if (!start) return;
+    // Waits for the screen to finish sliding in before opening the keyboard or the mic.
+    const timer = setTimeout(() => {
+      if (start === 'type') startWriting();
+      else if (voice.phase === 'idle') voice.start();
+      onStarted?.();
+    }, START_DELAY_MS);
+    return () => clearTimeout(timer);
+    // Only a new request should trigger this, not the handlers changing identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [start]);
 
   function stopWriting() {
     onWritingChange(false);

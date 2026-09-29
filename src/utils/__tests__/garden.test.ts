@@ -4,7 +4,9 @@ import { describe, it } from 'node:test';
 
 import {
   currentStreak,
+  gardenGoal,
   gardenState,
+  goalCaption,
   gardenVisit,
   lostLabels,
   pickCard,
@@ -36,6 +38,25 @@ describe('stages', () => {
     assert.equal(stageName(59), 'dreamscape');
     assert.equal(stageName(80), 'dream world');
     assert.equal(stageIndex(15), 5);
+  });
+
+  it('measures the way to the next stage', () => {
+    const goal = gardenGoal(8);
+    assert.equal(goal.stage, 'sapling');
+    assert.equal(goal.stageNumber, 4);
+    assert.deepEqual(goal.next, { name: 'young tree', at: 10 });
+    assert.equal(goal.done, 1);
+    assert.equal(goal.span, 3);
+    assert.equal(goalCaption(goal, 8), '2 more nights → young tree');
+    assert.equal(goalCaption(gardenGoal(9), 9), '1 more night → young tree');
+  });
+
+  it('starts at a seed and ends at a whole dream world', () => {
+    assert.equal(goalCaption(gardenGoal(0), 0), '1 more night → first sprout');
+    const whole = gardenGoal(72);
+    assert.equal(whole.stage, 'dream world');
+    assert.equal(whole.next, null);
+    assert.equal(goalCaption(whole, 72), 'a whole dream world ✦');
   });
 });
 

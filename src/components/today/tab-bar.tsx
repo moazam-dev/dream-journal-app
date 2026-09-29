@@ -1,6 +1,8 @@
 import { Image } from 'expo-image';
-import { router, type Href } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { router, useIsFocused, type Href } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
+import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { BrandFonts } from '@/constants/theme';
 
@@ -20,16 +22,20 @@ const TAB_ROUTES: Record<Tab, Href> = {
   patterns: '/patterns',
 };
 
+/** How long the highlight takes to slide over to the new tab. */
+const SLIDE_MS = 220;
+const BAR_PADDING = 6;
+const PILL_WIDTH = 56;
+
+/** The tab whose screen was last on show, so the next one's highlight slides over from it. */
+let shownTab: Tab = 'today';
+
 /**
- * Goes to another tab's screen. Today stays at the bottom of the stack: other tabs open
- * on top of it and replace each other, and "today" goes back down to it.
+ * Switches to another tab's screen. The tabs stay mounted, so this is instant.
  * Returns false for a tab that doesn't exist yet.
  */
 export function openTab(tab: Tab, from: Tab): boolean {
-  if (tab === from) return true;
-  if (tab === 'today') router.dismissTo('/home');
-  else if (from === 'today') router.push(TAB_ROUTES[tab]);
-  else router.replace(TAB_ROUTES[tab]);
+  if (tab !== from) router.navigate(TAB_ROUTES[tab]);
   return true;
 }
 
@@ -41,10 +47,39 @@ type TabBarProps = {
   background?: string;
 };
 
-/** The black tab bar at the bottom of the Today, Visualize, Garden, Entries and Patterns screens. */
+/**
+ * The black tab bar at the bottom of the Today, Visualize, Garden, Entries and Patterns screens.
+ * Each screen has its own, so when a screen comes into view its highlight slides over from
+ * the tab that was showing before.
+ */
 export function TabBar({ current, bottomInset, onPick, background = '#000' }: TabBarProps) {
+  const focused = useIsFocused();
+  const reduceMotion = useReducedMotion();
+  const [tabWidth, setTabWidth] = useState(0);
+  const position = useSharedValue(TABS.indexOf(current));
+
+  useEffect(() => {
+    if (!focused) return;
+    const to = TABS.indexOf(current);
+    if (reduceMotion) position.value = to;
+    else {
+      position.value = TABS.indexOf(shownTab);
+      position.value = withTiming(to, { duration: SLIDE_MS, easing: Easing.out(Easing.cubic) });
+    }
+    shownTab = current;
+  }, [focused, current, reduceMotion, position]);
+
+  const pill = useAnimatedStyle(() => ({
+    transform: [{ translateX: BAR_PADDING + position.value * tabWidth + (tabWidth - PILL_WIDTH) / 2 }],
+  }));
+
+  function onLayout(event: LayoutChangeEvent) {
+    setTabWidth((event.nativeEvent.layout.width - BAR_PADDING * 2) / TABS.length);
+  }
+
   return (
-    <View style={[styles.bar, { paddingBottom: bottomInset, backgroundColor: background }]} accessibilityRole="tablist">
+    <View style={[styles.bar, { paddingBottom: bottomInset, backgroundColor: background }]} onLayout={onLayout} accessibilityRole="tablist">
+      {tabWidth > 0 && <Animated.View pointerEvents="none" style={[styles.pill, pill]} />}
       {TABS.map((tab) => {
         const selected = tab === current;
         return (
@@ -53,7 +88,8 @@ export function TabBar({ current, bottomInset, onPick, background = '#000' }: Ta
             accessibilityRole="tab"
             accessibilityState={{ selected }}
             onPress={() => onPick(tab)}
-            style={[styles.tab, { opacity: selected ? 1 : 0.45 }]}>
+            hitSlop={{ top: 8 }}
+            style={({ pressed }) => [styles.tab, { opacity: selected ? 1 : pressed ? 0.8 : 0.45, transform: [{ scale: pressed ? 0.92 : 1 }] }]}>
             <View style={styles.icon}>
               <TabIcon tab={tab} />
             </View>
@@ -106,7 +142,16 @@ const styles = StyleSheet.create({
   bar: {
     flexDirection: 'row',
     paddingTop: 8,
-    paddingHorizontal: 6,
+    paddingHorizontal: BAR_PADDING,
+  },
+  pill: {
+    position: 'absolute',
+    left: 0,
+    top: 6,
+    width: PILL_WIDTH,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
   },
   tab: {
     flex: 1,

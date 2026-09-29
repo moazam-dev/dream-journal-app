@@ -11,7 +11,6 @@ import { dreamMood } from '@/utils/visualize';
 
 import { FILL, MOON, up } from './motion';
 
-const WEEKDAYS = ['s', 'm', 't', 'w', 't', 'f', 's'];
 const NIGHT = 38;
 /** The calendar card's colour, so the "written" crescent can be cut out of a circle. */
 const CARD = '#111114';
@@ -32,7 +31,7 @@ type NightCalendarProps = {
  * with a written one shows a crescent in the dream's mood colour, the rest are just numbers.
  */
 export function NightCalendar({ month, today, byDay, selectedId, paintingId, justPaintedId, reduceMotion, onPick }: NightCalendarProps) {
-  const { lead, days } = monthGrid(month.getFullYear(), month.getMonth());
+  const { days } = monthGrid(month.getFullYear(), month.getMonth());
   const thisMonth = today.getFullYear() === month.getFullYear() && today.getMonth() === month.getMonth();
 
   return (
@@ -62,14 +61,6 @@ export function NightCalendar({ month, today, byDay, selectedId, paintingId, jus
       </View>
 
       <View style={styles.grid}>
-        {WEEKDAYS.map((day, i) => (
-          <View key={`w${i}`} style={styles.cell}>
-            <Text style={styles.weekday}>{day}</Text>
-          </View>
-        ))}
-        {Array.from({ length: lead }, (_, i) => (
-          <View key={`b${i}`} style={styles.cell} />
-        ))}
         {Array.from({ length: days }, (_, i) => {
           const day = i + 1;
           const dream = byDay.get(day);
@@ -220,13 +211,6 @@ const styles = StyleSheet.create({
   cell: {
     width: `${100 / 7}%`,
     alignItems: 'center',
-  },
-  weekday: {
-    fontFamily: BrandFonts.medium,
-    fontSize: 10,
-    lineHeight: 12,
-    letterSpacing: 0.8,
-    color: 'rgba(255,255,255,0.5)',
   },
   night: {
     width: NIGHT,

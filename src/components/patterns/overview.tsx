@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
+import Svg, { Path } from 'react-native-svg';
 
 import { up } from '@/components/patterns/motion';
 import { PatternColors as C, PatternFonts as F } from '@/constants/theme';
@@ -21,7 +22,7 @@ export function HeroCard({ reduceMotion }: { reduceMotion: boolean }) {
         <Text style={styles.heroTitle} accessibilityRole="header">
           Your patterns, <Text style={styles.italic}>uncovered</Text>
         </Text>
-        <Text style={styles.heroText}>The themes, moods and people your dreams keep returning to — they grow and shift with every entry.</Text>
+        <Text style={styles.heroText}>What your dreams repeat</Text>
       </View>
     </Animated.View>
   );
@@ -72,72 +73,40 @@ function KpiCell({ kpi }: { kpi: Kpi }) {
 
 type CastCardProps = {
   cast: CastMember[];
-  selected: number;
-  onSelect: (index: number) => void;
   /** True while the reading is still looking through the dream text for people. */
   searching: boolean;
   reduceMotion: boolean;
 };
 
-/** "Your dream cast": who keeps showing up, tap one for where and how. */
-export function CastCard({ cast, selected, onSelect, searching, reduceMotion }: CastCardProps) {
-  const recurring = cast.filter((member) => member.count > 1).length;
-  const current = cast[Math.min(selected, cast.length - 1)];
+/** "Your dream cast": who keeps showing up, and in how many dreams. */
+export function CastCard({ cast, searching, reduceMotion }: CastCardProps) {
   const pairs = [cast.slice(0, 2), cast.slice(2, 4)].filter((pair) => pair.length > 0);
   return (
     <Animated.View style={[styles.cast, up(reduceMotion, 160)]}>
-      <View style={styles.castHead}>
-        <Text style={styles.castTitle} accessibilityRole="header">
-          Your dream cast
-        </Text>
-        <Text style={styles.castCount}>{recurring > 0 ? `${recurring} recurring` : `${cast.length} so far`}</Text>
-      </View>
+      <Text style={styles.castTitle} accessibilityRole="header">
+        Your dream cast
+      </Text>
       {cast.length === 0 ? (
-        <Text style={[styles.castEmpty]}>
-          {searching
-            ? 'Looking through your dreams for the people in them…'
-            : 'Nobody else has shown up yet. When someone appears in a dream, they’ll gather here.'}
-        </Text>
+        <Text style={styles.castEmpty}>{searching ? 'Finding faces…' : 'No one yet'}</Text>
       ) : (
-        <>
-          <View style={styles.castGrid}>
-            {pairs.map((pair, row) => (
-              <View key={row} style={styles.row}>
-                {pair.map((member, col) => {
-                  const index = row * 2 + col;
-                  const on = index === Math.min(selected, cast.length - 1);
-                  return (
-                    <Pressable
-                      key={member.name}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: on }}
-                      accessibilityLabel={`${member.name}, ${castLine(member)}`}
-                      onPress={() => onSelect(index)}
-                      style={({ pressed }) => [styles.person, on ? styles.personOn : styles.personOff, pressed && styles.pressed]}>
-                      <CastArt index={index} />
-                      <View style={styles.personText}>
-                        <Text style={styles.personName} numberOfLines={1}>
-                          {member.name}
-                        </Text>
-                        <Text style={styles.personLine} numberOfLines={1}>
-                          {castLine(member)}
-                        </Text>
-                      </View>
-                    </Pressable>
-                  );
-                })}
-                {pair.length === 1 && <View style={styles.personSpacer} />}
-              </View>
-            ))}
-          </View>
-          {current && (
-            <View style={styles.castNote}>
-              <Text style={styles.castNoteText}>
-                <Text style={styles.bold}>{current.name}</Text> — {current.note || 'showing up in your dreams.'}
-              </Text>
+        <View style={styles.castGrid}>
+          {pairs.map((pair, row) => (
+            <View key={row} style={styles.row}>
+              {pair.map((member, col) => (
+                <View key={member.name} style={styles.person} accessibilityLabel={`${member.name}, ${castLine(member)}`}>
+                  <CastArt index={row * 2 + col} />
+                  <View style={styles.personText}>
+                    <Text style={styles.personName} numberOfLines={1}>
+                      {member.name}
+                    </Text>
+                    <Text style={styles.personLine}>×{member.count}</Text>
+                  </View>
+                </View>
+              ))}
+              {pair.length === 1 && <View style={styles.personSpacer} />}
             </View>
-          )}
-        </>
+          ))}
+        </View>
       )}
     </Animated.View>
   );
@@ -186,11 +155,8 @@ function CastArt({ index }: { index: number }) {
 
 type ReportCardProps = {
   month: string;
-  owner: string;
   headline: string;
   stats: { value: string; label: string }[];
-  /** "Most visited by grandma · calmest night was a Saturday", in parts (bold ones marked). */
-  footer: { text: string; bold?: boolean }[];
   onWhatsApp: () => void;
   onShare: () => void;
   onCopy: () => void;
@@ -200,7 +166,7 @@ type ReportCardProps = {
 const STRIPES = [C.sky, C.mustard, C.rust];
 
 /** "Monthly report": a shareable card for the month in dreams. */
-export function ReportCard({ month, owner, headline, stats, footer, onWhatsApp, onShare, onCopy, reduceMotion }: ReportCardProps) {
+export function ReportCard({ month, headline, stats, onWhatsApp, onShare, onCopy, reduceMotion }: ReportCardProps) {
   const title = splitHeadline(headline);
   return (
     <Animated.View style={[styles.report, up(reduceMotion, 240)]}>
@@ -222,13 +188,10 @@ export function ReportCard({ month, owner, headline, stats, footer, onWhatsApp, 
           )}
         </View>
         <View style={styles.paperBody}>
-          <View style={styles.paperIntro}>
-            <Text style={styles.paperOwner}>{owner}</Text>
-            <Text style={styles.paperHeadline}>
-              {title.plain}
-              <Text style={styles.italic}>{title.italic}</Text>
-            </Text>
-          </View>
+          <Text style={styles.paperHeadline}>
+            {title.plain}
+            <Text style={styles.italic}>{title.italic}</Text>
+          </Text>
           <View style={styles.paperStats}>
             {stats.map((stat, i) => (
               <View key={stat.label} style={[styles.paperStat, i > 0 && styles.paperStatLine]}>
@@ -239,32 +202,33 @@ export function ReportCard({ month, owner, headline, stats, footer, onWhatsApp, 
               </View>
             ))}
           </View>
-          {footer.length > 0 && (
-            <Text style={styles.paperFooter}>
-              {footer.map((part, i) => (
-                <Text key={i} style={part.bold ? styles.paperBold : undefined}>
-                  {part.text}
-                </Text>
-              ))}
-            </Text>
-          )}
         </View>
       </View>
       <Pressable accessibilityRole="button" onPress={onWhatsApp} style={({ pressed }) => [styles.whatsapp, pressed && styles.pressed]}>
-        <View style={styles.waIcon}>
-          <View style={styles.waDot} />
-        </View>
-        <Text style={styles.whatsappText}>Share on WhatsApp</Text>
+        <WhatsAppIcon />
+        <Text style={styles.whatsappText}>WhatsApp</Text>
       </Pressable>
       <View style={styles.row}>
         <Pressable accessibilityRole="button" onPress={onShare} style={({ pressed }) => [styles.outline, pressed && styles.pressed]}>
-          <Text style={styles.outlineText}>More apps</Text>
+          <Text style={styles.outlineText}>More</Text>
         </Pressable>
         <Pressable accessibilityRole="button" onPress={onCopy} style={({ pressed }) => [styles.outline, pressed && styles.pressed]}>
-          <Text style={styles.outlineText}>Copy text</Text>
+          <Text style={styles.outlineText}>Copy</Text>
         </Pressable>
       </View>
     </Animated.View>
+  );
+}
+
+/** WhatsApp's speech-bubble phone mark. */
+function WhatsAppIcon() {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24">
+      <Path
+        fill={C.whatsappInk}
+        d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91C21.95 6.45 17.5 2 12.04 2zm0 18.15c-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.2 8.2 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24 4.54 0 8.24 3.7 8.24 8.24 0 4.54-3.7 8.24-8.23 8.24zm4.52-6.16c-.25-.12-1.47-.72-1.7-.81-.23-.08-.39-.12-.56.12-.17.25-.64.81-.78.97-.14.17-.29.19-.54.06-.25-.12-1.05-.39-1.99-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.02-.38.11-.51.11-.11.25-.29.37-.43.12-.14.17-.25.25-.41.08-.17.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.48-.41-.42-.56-.43h-.48c-.17 0-.43.06-.66.31-.23.25-.86.85-.86 2.07 0 1.22.89 2.4 1.01 2.56.12.17 1.75 2.67 4.23 3.74.59.26 1.05.41 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.67-1.18.21-.58.21-1.07.14-1.18-.06-.11-.22-.17-.47-.29z"
+      />
+    </Svg>
   );
 }
 
@@ -276,8 +240,10 @@ const PHASES: [number, 'flex-end' | 'flex-start'][] = [
   [0, 'flex-start'],
 ];
 
-/** "Had another dream?": moon phases and a way to log one. */
-export function LogCard({ onLog, reduceMotion }: { onLog: () => void; reduceMotion: boolean }) {
+type LogCardProps = { onYap: () => void; onType: () => void; reduceMotion: boolean };
+
+/** "Had another dream?": moon phases, then yap it or type it. */
+export function LogCard({ onYap, onType, reduceMotion }: LogCardProps) {
   return (
     <Animated.View style={[styles.log, up(reduceMotion, 320)]}>
       <View style={styles.phases}>
@@ -288,33 +254,65 @@ export function LogCard({ onLog, reduceMotion }: { onLog: () => void; reduceMoti
         ))}
       </View>
       <View style={styles.logBody}>
-        <View style={styles.logText}>
-          <Text style={styles.logTitle} accessibilityRole="header">
-            Had another dream?
-          </Text>
-          <Text style={styles.logNote}>Tell Afterdream while it’s still fresh — every entry sharpens your patterns.</Text>
+        <Text style={styles.logTitle} accessibilityRole="header">
+          Had another dream?
+        </Text>
+        <View style={styles.row}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Yap: say your dream out loud"
+            onPress={onYap}
+            style={({ pressed }) => [styles.logButton, pressed && styles.pressed]}>
+            <WaveIcon />
+            <Text style={styles.logButtonText}>Yap</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Type your dream"
+            onPress={onType}
+            style={({ pressed }) => [styles.logButton, styles.logButtonOutline, pressed && styles.pressed]}>
+            <PenIcon />
+            <Text style={[styles.logButtonText, styles.inkText]}>Type</Text>
+          </Pressable>
         </View>
-        <Pressable accessibilityRole="button" onPress={onLog} style={({ pressed }) => [styles.logButton, pressed && styles.pressed]}>
-          <Text style={styles.logPlus}>+</Text>
-          <Text style={styles.logButtonText}>Log a dream</Text>
-        </Pressable>
       </View>
     </Animated.View>
   );
 }
 
+/** Sound wave, for yapping. */
+function WaveIcon() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Path d="M2 12h3.2l2.3-4.5 3.2 11L14 3.5l2.9 13.5 1.9-5H22" stroke={C.cream} strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+/** Pencil, for typing. */
+function PenIcon() {
+  return (
+    <Svg width={18} height={18} viewBox="0 0 24 24">
+      <Path
+        d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
+        fill={C.ink}
+      />
+    </Svg>
+  );
+}
+
 const styles = StyleSheet.create({
   italic: { fontFamily: F.serifItalic },
-  bold: { fontFamily: F.sansSemibold },
+  inkText: { color: C.ink },
   pressed: { opacity: 0.8 },
   row: { flexDirection: 'row', gap: 12 },
 
   hero: { borderRadius: 28, overflow: 'hidden', backgroundColor: C.rust },
-  heroSky: { height: 150, alignItems: 'center', justifyContent: 'flex-end', backgroundColor: C.mustard },
+  heroSky: { height: 180, alignItems: 'center', justifyContent: 'flex-end', backgroundColor: C.mustard },
   arch: { borderTopLeftRadius: 999, borderTopRightRadius: 999, alignItems: 'center', justifyContent: 'flex-end' },
-  heroBody: { paddingTop: 22, paddingHorizontal: 22, paddingBottom: 24, gap: 10 },
-  heroTitle: { fontFamily: F.serif, fontSize: 38, lineHeight: 40, letterSpacing: -1, color: C.cream },
-  heroText: { fontFamily: F.sans, fontSize: 15, lineHeight: 22, color: C.cream },
+  heroBody: { paddingTop: 26, paddingHorizontal: 24, paddingBottom: 30, gap: 8 },
+  heroTitle: { fontFamily: F.serif, fontSize: 32, lineHeight: 34, letterSpacing: -0.8, color: C.cream },
+  heroText: { fontFamily: F.sans, fontSize: 14, lineHeight: 18, color: C.cream, opacity: 0.85 },
 
   grid: { gap: 12 },
   tile: { flex: 1, borderRadius: 24, backgroundColor: C.card, borderWidth: 1.5, borderColor: C.line, padding: 16, gap: 14 },
@@ -332,59 +330,45 @@ const styles = StyleSheet.create({
   weekLetter: { fontFamily: F.sansMedium, fontSize: 11, lineHeight: 13, color: C.muted },
   weekToday: { color: C.cream },
 
-  cast: { borderRadius: 28, overflow: 'hidden', backgroundColor: C.forest },
-  castHead: { paddingTop: 22, paddingHorizontal: 22, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
-  castTitle: { fontFamily: F.serif, fontSize: 30, lineHeight: 32, letterSpacing: -0.8, color: C.cream },
-  castCount: { fontFamily: F.sansMedium, fontSize: 13, lineHeight: 16, color: C.mint },
-  castEmpty: { fontFamily: F.sans, fontSize: 14, lineHeight: 20, color: C.mint, paddingHorizontal: 22, paddingTop: 12, paddingBottom: 22 },
-  castGrid: { gap: 10, paddingTop: 18, paddingHorizontal: 16, paddingBottom: 16 },
-  person: { flex: 1, borderRadius: 20, padding: 14, gap: 12, borderWidth: 1.5 },
-  personOn: { backgroundColor: 'rgba(243,238,228,0.14)', borderColor: C.cream },
-  personOff: { backgroundColor: 'transparent', borderColor: 'rgba(243,238,228,0.2)' },
+  cast: { borderRadius: 28, overflow: 'hidden', backgroundColor: C.forest, paddingTop: 26 },
+  castTitle: { paddingHorizontal: 24, fontFamily: F.serif, fontSize: 24, lineHeight: 26, letterSpacing: -0.6, color: C.cream },
+  castEmpty: { fontFamily: F.sans, fontSize: 13, lineHeight: 16, color: C.mint, paddingHorizontal: 24, paddingTop: 14, paddingBottom: 30 },
+  castGrid: { gap: 12, paddingTop: 20, paddingHorizontal: 16, paddingBottom: 18 },
+  person: { flex: 1, borderRadius: 20, paddingVertical: 20, paddingHorizontal: 16, gap: 14, borderWidth: 1.5, borderColor: 'rgba(243,238,228,0.2)' },
   personSpacer: { flex: 1 },
-  personText: { gap: 4 },
-  personName: { fontFamily: F.serif, fontSize: 22, lineHeight: 24, color: C.cream },
-  personLine: { fontFamily: F.sans, fontSize: 12, lineHeight: 15, color: C.mint },
+  personText: { gap: 2 },
+  personName: { fontFamily: F.serif, fontSize: 18, lineHeight: 21, color: C.cream },
+  personLine: { fontFamily: F.sansMedium, fontSize: 12, lineHeight: 15, color: C.mint },
   art: { width: 56, height: 56, borderRadius: 28, overflow: 'hidden' },
   artRow: { flexDirection: 'row' },
   artCenter: { alignItems: 'center', justifyContent: 'center' },
   ring: { borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
-  castNote: { marginHorizontal: 16, marginBottom: 16, borderRadius: 18, backgroundColor: 'rgba(243,238,228,0.1)', paddingVertical: 14, paddingHorizontal: 16 },
-  castNoteText: { fontFamily: F.sans, fontSize: 14, lineHeight: 20, color: C.cream },
 
   report: { borderRadius: 28, overflow: 'hidden', backgroundColor: C.plum, padding: 16, gap: 14 },
-  reportHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 6, paddingHorizontal: 6 },
-  reportTitle: { fontFamily: F.serif, fontSize: 30, lineHeight: 32, letterSpacing: -0.8, color: C.cream },
-  reportMonth: { fontFamily: F.sansMedium, fontSize: 13, lineHeight: 16, color: C.lilac },
+  reportHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, paddingHorizontal: 8 },
+  reportTitle: { fontFamily: F.serif, fontSize: 24, lineHeight: 26, letterSpacing: -0.6, color: C.cream },
+  reportMonth: { fontFamily: F.sansMedium, fontSize: 12, lineHeight: 15, color: C.lilac },
   paper: { borderRadius: 20, backgroundColor: C.cream, overflow: 'hidden' },
-  stripes: { height: 72, flexDirection: 'row', overflow: 'hidden' },
+  stripes: { height: 88, flexDirection: 'row', overflow: 'hidden' },
   stripeGroup: { flexDirection: 'row' },
-  paperBody: { padding: 18, gap: 14 },
-  paperIntro: { gap: 6 },
-  paperOwner: { fontFamily: F.sansSemibold, fontSize: 11, lineHeight: 13, letterSpacing: 1.4, textTransform: 'uppercase', color: C.paperMuted },
-  paperHeadline: { fontFamily: F.serif, fontSize: 28, lineHeight: 30, letterSpacing: -0.8, color: C.ink },
-  paperStats: { flexDirection: 'row', borderTopWidth: 1.5, borderBottomWidth: 1.5, borderColor: C.paperLine },
-  paperStat: { flex: 1, minWidth: 0, paddingVertical: 12, gap: 4 },
+  paperBody: { paddingTop: 22, paddingHorizontal: 20, paddingBottom: 12, gap: 16 },
+  paperHeadline: { fontFamily: F.serif, fontSize: 24, lineHeight: 27, letterSpacing: -0.6, color: C.ink },
+  paperStats: { flexDirection: 'row', borderTopWidth: 1.5, borderColor: C.paperLine },
+  paperStat: { flex: 1, minWidth: 0, paddingVertical: 14, gap: 4 },
   paperStatLine: { borderLeftWidth: 1.5, borderColor: C.paperLine, paddingLeft: 12 },
-  paperValue: { fontFamily: F.serif, fontSize: 24, lineHeight: 26, color: C.ink },
-  paperLabel: { fontFamily: F.sans, fontSize: 12, lineHeight: 15, color: C.paperMuted },
-  paperFooter: { fontFamily: F.sans, fontSize: 14, lineHeight: 20, color: C.paperText },
-  paperBold: { fontFamily: F.sansSemibold, color: C.ink },
-  whatsapp: { height: 52, borderRadius: 26, backgroundColor: C.whatsapp, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
-  waIcon: { width: 22, height: 22, borderRadius: 11, borderWidth: 2.5, borderColor: C.whatsappInk, alignItems: 'center', justifyContent: 'center' },
-  waDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.whatsappInk },
-  whatsappText: { fontFamily: F.sansSemibold, fontSize: 16, lineHeight: 19, color: C.whatsappInk },
+  paperValue: { fontFamily: F.serif, fontSize: 22, lineHeight: 24, color: C.ink },
+  paperLabel: { fontFamily: F.sans, fontSize: 11, lineHeight: 14, color: C.paperMuted },
+  whatsapp: { height: 54, borderRadius: 27, backgroundColor: C.whatsapp, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  whatsappText: { fontFamily: F.sansSemibold, fontSize: 15, lineHeight: 18, color: C.whatsappInk },
   outline: { flex: 1, height: 48, borderRadius: 24, borderWidth: 1.5, borderColor: C.lilac, alignItems: 'center', justifyContent: 'center' },
-  outlineText: { fontFamily: F.sansSemibold, fontSize: 15, lineHeight: 18, color: C.cream },
+  outlineText: { fontFamily: F.sansSemibold, fontSize: 14, lineHeight: 17, color: C.cream },
 
-  log: { borderRadius: 28, overflow: 'hidden', backgroundColor: C.mustard },
-  phases: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 24, paddingHorizontal: 22 },
+  log: { minHeight: 300, borderRadius: 28, overflow: 'hidden', backgroundColor: C.mustard, justifyContent: 'space-between' },
+  phases: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 32, paddingHorizontal: 24 },
   moon: { width: 44, height: 44, borderRadius: 22, backgroundColor: C.ink, overflow: 'hidden', flexDirection: 'row' },
-  logBody: { padding: 22, gap: 16 },
-  logText: { gap: 6 },
-  logTitle: { fontFamily: F.serif, fontSize: 34, lineHeight: 36, letterSpacing: -1, color: C.ink },
-  logNote: { fontFamily: F.sans, fontSize: 15, lineHeight: 21, color: C.ink },
-  logButton: { alignSelf: 'flex-start', height: 50, paddingHorizontal: 22, borderRadius: 25, backgroundColor: C.ink, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  logPlus: { fontFamily: F.sansSemibold, fontSize: 20, lineHeight: 22, color: C.cream },
+  logBody: { paddingTop: 36, paddingHorizontal: 20, paddingBottom: 22, gap: 22 },
+  logTitle: { paddingHorizontal: 4, fontFamily: F.serif, fontSize: 28, lineHeight: 30, letterSpacing: -0.8, color: C.ink },
+  logButton: { flex: 1, height: 56, borderRadius: 28, backgroundColor: C.ink, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  logButtonOutline: { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: C.ink },
   logButtonText: { fontFamily: F.sansSemibold, fontSize: 15, lineHeight: 18, color: C.cream },
 });

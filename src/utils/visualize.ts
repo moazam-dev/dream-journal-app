@@ -33,6 +33,29 @@ export function unpaintedDreams(dreams: readonly Dream[]): Dream[] {
     .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
 }
 
+export type PaintingRow = { key: 'week' | 'month' | 'earlier'; title: string; dreams: Dream[] };
+
+/**
+ * The gallery split into rows: this week (monday to today), the rest of this month, and
+ * anything older. The week row is always there (it ends with "your next dream"); the
+ * others only when they have something in them.
+ */
+export function paintingRows(paintings: readonly Dream[], now: Date): PaintingRow[] {
+  // getDay() is 0 on sunday; step back to this week's monday.
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7)).getTime();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+  const rows: PaintingRow[] = [
+    { key: 'week', title: 'this week', dreams: [] },
+    { key: 'month', title: 'this month', dreams: [] },
+    { key: 'earlier', title: 'earlier', dreams: [] },
+  ];
+  for (const dream of paintings) {
+    const told = new Date(dream.created_at).getTime();
+    rows[told >= monday ? 0 : told >= monthStart ? 1 : 2].dreams.push(dream);
+  }
+  return rows.filter((row) => row.key === 'week' || row.dreams.length > 0);
+}
+
 /** Above a painting: "sep 27 • wonder". */
 export function cardMeta(dream: Pick<Dream, 'created_at' | 'mood'> & Partial<Pick<Dream, 'user_mood'>>): string {
   const mood = dreamMood({ mood: dream.mood, user_mood: dream.user_mood });

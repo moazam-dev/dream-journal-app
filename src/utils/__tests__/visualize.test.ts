@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import type { Dream } from '../../types/dream.ts';
-import { cardMeta, dreamMood, pickPaintings, unpaintedDreams } from '../visualize.ts';
+import { cardMeta, dreamMood, paintingRows, pickPaintings, unpaintedDreams } from '../visualize.ts';
 
 type Paint = Pick<Dream, 'image_status' | 'image_url' | 'analysis_status'>;
 
@@ -75,6 +75,54 @@ describe('unpaintedDreams', () => {
     assert.deepEqual(
       unpaintedDreams([c, d, a, b, e]).map((x) => x.id),
       ['e', 'c', 'd']
+    );
+  });
+});
+
+describe('paintingRows', () => {
+  // A tuesday: the week started on monday the 28th.
+  const now = new Date(2026, 8, 29, 9);
+
+  it('splits the gallery into this week, the rest of this month, and earlier, keeping the order', () => {
+    const rows = paintingRows(
+      [
+        dream('a', new Date(2026, 8, 29, 7), painted),
+        dream('b', new Date(2026, 8, 28, 1), painted),
+        dream('c', new Date(2026, 8, 27, 23), painted),
+        dream('d', new Date(2026, 8, 1, 3), painted),
+        dream('e', new Date(2026, 7, 31, 22), painted),
+      ],
+      now
+    );
+    assert.deepEqual(
+      rows.map((row) => [row.key, row.dreams.map((x) => x.id)]),
+      [
+        ['week', ['a', 'b']],
+        ['month', ['c', 'd']],
+        ['earlier', ['e']],
+      ]
+    );
+  });
+
+  it('always keeps this week (for "your next dream"), and leaves out empty rows', () => {
+    assert.deepEqual(
+      paintingRows([dream('d', new Date(2026, 8, 10), painted)], now).map((row) => [row.key, row.dreams.length]),
+      [
+        ['week', 0],
+        ['month', 1],
+      ]
+    );
+    assert.deepEqual(
+      paintingRows([], now).map((row) => row.key),
+      ['week']
+    );
+  });
+
+  it('counts a week that started last month as this week', () => {
+    const rows = paintingRows([dream('a', new Date(2026, 8, 30), painted)], new Date(2026, 9, 1, 9));
+    assert.deepEqual(
+      rows.map((row) => [row.key, row.dreams.length]),
+      [['week', 1]]
     );
   });
 });

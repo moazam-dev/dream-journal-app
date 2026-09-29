@@ -7,7 +7,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { GardenPick, LostCounts } from '@/components/garden/garden-engine';
 import GardenScene, { type SceneCommand } from '@/components/garden/garden-scene';
-import { DemoCounter, GardenActions, GardenToast, PickSheet, Planting, RulesSheet, StageBanner, WiltSheet } from '@/components/garden/parts';
+import {
+  DemoScrubber,
+  GardenActions,
+  GardenHeading,
+  GardenToast,
+  PickSheet,
+  Planting,
+  RulesSheet,
+  StageBanner,
+  WiltSheet,
+} from '@/components/garden/parts';
 import { BRAND_BAR_HEIGHT, BrandBar } from '@/components/today/brand-bar';
 import { ease } from '@/components/today/motion';
 import { openTab, TAB_BAR_HEIGHT, TabBar, type Tab } from '@/components/today/tab-bar';
@@ -56,10 +66,15 @@ export default function GardenScreen() {
   const [banner, setBanner] = useState<{ id: number; name: string } | null>(null);
   const [toast, setToast] = useState<{ id: number; text: string } | null>(null);
   const [demoDay, setDemoDay] = useState<number | null>(null);
+  const [demoPlaying, setDemoPlaying] = useState(false);
 
   const nextId = useRef(1);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const demoTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  /** Leaves the demo a little after it reaches the end, unless the bar is touched first. */
+  const demoEnd = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** The demo's night, for the timer and the scrubber (state lags a render behind). */
+  const demoNight = useRef(0);
 
   const later = useCallback((fn: () => void, ms: number) => {
     timers.current.push(setTimeout(fn, ms));
@@ -69,6 +84,7 @@ export default function GardenScreen() {
     () => () => {
       timers.current.forEach(clearTimeout);
       if (demoTimer.current) clearInterval(demoTimer.current);
+      if (demoEnd.current) clearTimeout(demoEnd.current);
     },
     []
   );
@@ -117,35 +133,67 @@ export default function GardenScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [garden, ready, loading]);
 
-  function stopDemo() {
+  /** Holds the demo on the night it's on. */
+  function pauseDemo() {
     if (demoTimer.current) clearInterval(demoTimer.current);
     demoTimer.current = null;
+    if (demoEnd.current) clearTimeout(demoEnd.current);
+    demoEnd.current = null;
+    setDemoPlaying(false);
+  }
+
+  function stopDemo() {
+    pauseDemo();
     setDemoDay(null);
     // Straight back to their own garden.
     send({ growth: garden.growth, wilted: !!garden.wilt, from: { growth: garden.growth, wilted: !!garden.wilt, delay: 0 } });
   }
 
-  /** Grows a garden from a seed to a whole dream world, a night every 0.9 s. */
+  /** Shows the demo's garden on this night; `burst` marks a newly reached stage. */
+  function showDemoDay(day: number, burst: boolean) {
+    const previous = demoNight.current;
+    demoNight.current = day;
+    setDemoDay(day);
+    send({ growth: day, wilted: false, burst: burst && stageIndex(day) > stageIndex(previous) ? 'grow' : null });
+  }
+
+  /** Grows the demo a night every 0.9 s from where it is, and leaves it once it's whole. */
+  function resumeDemo() {
+    pauseDemo();
+    setDemoPlaying(true);
+    demoTimer.current = setInterval(() => {
+      const day = demoNight.current + 1;
+      showDemoDay(day, true);
+      if (day >= FULL_GROWTH) {
+        pauseDemo();
+        showToast('60 days in — a whole dream world ✦');
+        demoEnd.current = setTimeout(stopDemo, TOAST_MS + 800);
+      }
+    }, DEMO_NIGHT_MS);
+  }
+
+  /** Grows a garden from a seed to a whole dream world. */
   function playDemo() {
     if (!ready) return;
     if (demoDay !== null) return stopDemo();
     setPick(null);
     setBanner(null);
     setRules(false);
+    demoNight.current = 0;
     setDemoDay(0);
     send({ growth: 0, wilted: false, from: { growth: 0, wilted: false, delay: 0 } });
-    let day = 0;
-    demoTimer.current = setInterval(() => {
-      day += 1;
-      setDemoDay(day);
-      send({ growth: day, wilted: false, burst: stageIndex(day) > stageIndex(day - 1) ? 'grow' : null });
-      if (day >= FULL_GROWTH) {
-        if (demoTimer.current) clearInterval(demoTimer.current);
-        demoTimer.current = null;
-        showToast('60 days in — a whole dream world ✦');
-        later(stopDemo, TOAST_MS + 800);
-      }
-    }, DEMO_NIGHT_MS);
+    resumeDemo();
+  }
+
+  function toggleDemo() {
+    if (demoPlaying) return pauseDemo();
+    // From the end, play it again from the seed.
+    if (demoNight.current >= FULL_GROWTH) showDemoDay(0, false);
+    resumeDemo();
+  }
+
+  function scrubDemo(day: number) {
+    if (day !== demoNight.current) showDemoDay(day, false);
   }
 
   async function onPick(picked: GardenPick | null) {
@@ -224,9 +272,21 @@ export default function GardenScreen() {
           <PickSheet card={pick} reduceMotion={reduceMotion} onClose={() => setPick(null)} onReread={reread} />
         </View>
       )}
+      {settled && !demo && !pick && (
+        <View pointerEvents="none" style={[styles.fill, { top: insets.top + BRAND_BAR_HEIGHT + 18 }]}>
+          <GardenHeading growth={garden.growth} reduceMotion={reduceMotion} />
+        </View>
+      )}
       {demo && (
-        <View pointerEvents="none" style={[styles.fill, { top: insets.top + BRAND_BAR_HEIGHT + 6 }]}>
-          <DemoCounter day={demoDay} reduceMotion={reduceMotion} />
+        <View pointerEvents="box-none" style={[styles.fill, { top: insets.top + BRAND_BAR_HEIGHT + 10 }]}>
+          <DemoScrubber
+            day={demoDay}
+            playing={demoPlaying}
+            reduceMotion={reduceMotion}
+            onPlayPause={toggleDemo}
+            onScrubStart={pauseDemo}
+            onScrub={scrubDemo}
+          />
         </View>
       )}
       {banner && !demo && (

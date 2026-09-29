@@ -17,7 +17,7 @@ import { analyzeDream } from '@/services/dreams';
 import type { Dream } from '@/types/dream';
 import { getErrorMessage } from '@/utils/errors';
 import { currentStreak } from '@/utils/garden';
-import { pickPaintings, unpaintedDreams } from '@/utils/visualize';
+import { paintingRows, pickPaintings, unpaintedDreams, type PaintingRow } from '@/utils/visualize';
 
 const TOAST_MS = 2200;
 /** A column, the gap either side of the divider, and the divider itself. */
@@ -30,8 +30,9 @@ const DESIGN_HEIGHT = 844;
 
 /**
  * Visualize ("/visualize"), from the Afterdream Visualize (simple) design: every dream
- * painted so far, side by side, newest first, to swipe back through. Tapping a painting
- * shows it full screen; the last column goes to Today to tell a new one. "+" offers both:
+ * painted so far, side by side, newest first, to swipe back through, in rows for this week,
+ * the rest of this month, and earlier. Tapping a painting shows it full screen; the last
+ * column of this week goes to Today to tell a new one. "+" offers both:
  * yap a new dream on Today, or pick an old dream that isn't painted yet and paint it here.
  *
  * `?id=<dream id>` adds that dream if it isn't painted yet, paints it, and scrolls to it.
@@ -46,12 +47,14 @@ export default function VisualizeScreen() {
   const [now] = useState(() => new Date());
   // Dreams painted on this screen, until the next reload brings them from the server.
   const [changed, setChanged] = useState<Record<string, Dream>>({});
-  const [galleryHeight, setGalleryHeight] = useState(0);
+  // Where each row starts on the page, to scroll a dream opened from its page into view.
+  const [rowY, setRowY] = useState<Partial<Record<PaintingRow['key'], number>>>({});
   const [toast, setToast] = useState<{ id: number; text: string } | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const gallery = useRef<ScrollView>(null);
+  const page = useRef<ScrollView>(null);
+  const rowViews = useRef<Partial<Record<PaintingRow['key'], ScrollView | null>>>({});
   const scrolledTo = useRef<string | null>(null);
 
   useEffect(
@@ -65,18 +68,22 @@ export default function VisualizeScreen() {
   const paintings = useMemo(() => pickPaintings(dreams, id), [dreams, id]);
   const streak = useMemo(() => currentStreak(dreams, now), [dreams, now]);
   const oldDreams = useMemo(() => unpaintedDreams(dreams), [dreams]);
+  const rows = useMemo(() => paintingRows(paintings, now), [paintings, now]);
 
   const tabBarBottom = Math.max(insets.bottom, 8);
   const squeeze = Math.min(1, height / DESIGN_HEIGHT);
-  const pictureSize = Math.max(140, Math.min(COLUMN_WIDTH, galleryHeight - 140));
+  const pictureSize = Math.max(160, Math.round(COLUMN_WIDTH * squeeze));
 
-  // Opened for one dream: bring its column into view once it's there.
-  const focusIndex = id ? paintings.findIndex((dream) => dream.id === id) : -1;
+  // Opened for one dream: bring its row, then its column, into view once they're there.
+  const focusRow = id ? rows.find((row) => row.dreams.some((dream) => dream.id === id)) : undefined;
+  const focusIndex = focusRow ? focusRow.dreams.findIndex((dream) => dream.id === id) : -1;
+  const focusY = focusRow ? rowY[focusRow.key] : undefined;
   useEffect(() => {
-    if (focusIndex < 0 || !galleryHeight || scrolledTo.current === id) return;
+    if (!focusRow || focusY === undefined || scrolledTo.current === id) return;
     scrolledTo.current = id ?? null;
-    gallery.current?.scrollTo({ x: focusIndex * STEP, animated: !reduceMotion });
-  }, [focusIndex, galleryHeight, id, reduceMotion]);
+    page.current?.scrollTo({ y: focusY, animated: !reduceMotion });
+    rowViews.current[focusRow.key]?.scrollTo({ x: focusIndex * STEP, animated: !reduceMotion });
+  }, [focusRow, focusIndex, focusY, id, reduceMotion]);
 
   function showToast(text: string) {
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -142,41 +149,56 @@ export default function VisualizeScreen() {
       <StatusBar style="light" />
       <BrandBar title="visualize" streak={streak} />
 
-      <View style={[styles.intro, { marginTop: 48 * squeeze }]}>
-        <Text style={styles.introTitle}>{failed ? 'couldn’t reach your dreams.' : 'this week'}</Text>
-        {failed && (
-          <>
-            <Text style={styles.introText}>{error}</Text>
-            <Pressable accessibilityRole="button" onPress={reload} style={({ pressed }) => [styles.retry, pressed && styles.pressed]}>
-              <Text style={styles.retryText}>try again</Text>
-            </Pressable>
-          </>
-        )}
-      </View>
-
-      <View
-        style={[styles.galleryArea, { marginTop: 30 * squeeze, marginBottom: TAB_BAR_HEIGHT + tabBarBottom + 8 }]}
-        onLayout={(event) => setGalleryHeight(event.nativeEvent.layout.height)}>
-        {galleryHeight > 0 && !(loading && loaded.length === 0) && (
-          <ScrollView
-            ref={gallery}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            snapToInterval={STEP}
-            decelerationRate="fast"
-            contentContainerStyle={styles.gallery}>
-            {paintings.map((dream) => (
-              <View key={dream.id} style={styles.slot}>
-                <View style={styles.tail}>
-                  <Painting dream={dream} size={pictureSize} reduceMotion={reduceMotion} onChange={change} onOpen={openPainting} />
-                </View>
-                <View style={styles.divider} />
-              </View>
-            ))}
-            <NextDream size={pictureSize} onPress={tellNew} />
-          </ScrollView>
-        )}
-      </View>
+      {failed ? (
+        <View style={[styles.intro, { marginTop: 48 * squeeze }]}>
+          <Text style={styles.introTitle}>couldn’t reach your dreams.</Text>
+          <Text style={styles.introText}>{error}</Text>
+          <Pressable accessibilityRole="button" onPress={reload} style={({ pressed }) => [styles.retry, pressed && styles.pressed]}>
+            <Text style={styles.retryText}>try again</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <ScrollView
+          ref={page}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingTop: 48 * squeeze, paddingBottom: TAB_BAR_HEIGHT + tabBarBottom + 24 }}>
+          {rows.map((row, i) => (
+            <View
+              key={row.key}
+              style={i > 0 && { marginTop: 40 * squeeze }}
+              onLayout={(event) => {
+                const { y } = event.nativeEvent.layout;
+                setRowY((current) => (current[row.key] === y ? current : { ...current, [row.key]: y }));
+              }}>
+              <Text style={[styles.introTitle, styles.rowTitle]} accessibilityRole="header">
+                {row.title}
+              </Text>
+              {!(loading && loaded.length === 0) && (
+                <ScrollView
+                  ref={(view) => {
+                    rowViews.current[row.key] = view;
+                  }}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  snapToInterval={STEP}
+                  decelerationRate="fast"
+                  style={{ marginTop: 30 * squeeze }}
+                  contentContainerStyle={styles.gallery}>
+                  {row.dreams.map((dream, j) => (
+                    <View key={dream.id} style={styles.slot}>
+                      <View style={styles.tail}>
+                        <Painting dream={dream} size={pictureSize} reduceMotion={reduceMotion} onChange={change} onOpen={openPainting} />
+                      </View>
+                      {(row.key === 'week' || j < row.dreams.length - 1) && <View style={styles.divider} />}
+                    </View>
+                  ))}
+                  {row.key === 'week' && <NextDream size={pictureSize} onPress={tellNew} />}
+                </ScrollView>
+              )}
+            </View>
+          ))}
+        </ScrollView>
+      )}
 
       <View style={styles.tabBar}>
         <TabBar current="visualize" bottomInset={tabBarBottom} onPick={pickTab} />
@@ -255,8 +277,8 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.8,
   },
-  galleryArea: {
-    flex: 1,
+  rowTitle: {
+    paddingHorizontal: 20,
   },
   gallery: {
     paddingHorizontal: 20,

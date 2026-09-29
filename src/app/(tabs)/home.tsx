@@ -1,4 +1,4 @@
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -109,6 +109,10 @@ export default function HomeScreen() {
   const [toast, setToast] = useState<{ id: number; text: string } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cards = useRef<(View | null)[]>([]);
+  const feed = useRef<ScrollView>(null);
+  // Patterns' "Had another dream?" lands here asking to yap or type straight away.
+  const { start } = useLocalSearchParams<{ start?: string }>();
+  const startWith = start === 'yap' || start === 'type' ? start : undefined;
 
   const cardHeight = Math.max(MIN_CARD, areaHeight - PEEK);
   const interval = cardHeight + GAP;
@@ -247,6 +251,7 @@ export default function HomeScreen() {
       <View style={styles.area} onLayout={onFeedLayout}>
         {areaHeight > 0 && (
           <ScrollView
+            ref={feed}
             style={StyleSheet.absoluteFill}
             contentContainerStyle={styles.feed}
             showsVerticalScrollIndicator={false}
@@ -266,6 +271,11 @@ export default function HomeScreen() {
                 onSubmit={(text) => interpret(0, '✎ from your words', { source: 'write', text })}
                 onYap={(text, seconds) => interpret(0, `◉ ${formatClock(Math.max(1, seconds))} of yapping`, { source: 'yap', text })}
                 onSpeak={() => (isVoiceAgentAvailable() ? router.push('/voice') : showToast('speaking needs the full app build ✦'))}
+                start={startWith}
+                onStarted={() => {
+                  feed.current?.scrollTo({ y: 0, animated: true });
+                  router.setParams({ start: undefined });
+                }}
               />
             </View>
             <View ref={(view) => void (cards.current[1] = view)} collapsable={false}>

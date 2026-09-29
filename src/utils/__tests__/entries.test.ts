@@ -209,17 +209,16 @@ describe('the calendar', () => {
   // Sunday 27 Sep 2026.
   const dreams = [dream('early', new Date(2026, 8, 25, 6)), dream('late', new Date(2026, 8, 25, 8)), dream('aug', new Date(2026, 7, 30, 8))];
 
-  it('lays out the month from sunday, with the newest dream on each day', () => {
+  it('lays out the month from the 1st, with the newest dream on each day', () => {
     const days = calendarMonth(dreams, now);
-    assert.equal(days.length, 2 + 30); // september 2026 starts on a tuesday
-    assert.equal(days[0], null);
-    assert.equal(days[2]?.day, 1);
-    const day25 = days[2 + 24];
-    assert.equal(day25?.day, 25);
-    assert.equal(day25?.dream?.id, 'late');
-    assert.equal(days[2 + 26]?.today, true);
-    assert.equal(days[2 + 27]?.future, true);
-    assert.equal(days[2 + 26]?.future, false);
+    assert.equal(days.length, 30); // no blanks before the 1st, whatever weekday it falls on
+    assert.equal(days[0].day, 1);
+    const day25 = days[24];
+    assert.equal(day25.day, 25);
+    assert.equal(day25.dream?.id, 'late');
+    assert.equal(days[26].today, true);
+    assert.equal(days[27].future, true);
+    assert.equal(days[26].future, false);
   });
 
   it('shows this week, sunday to saturday, even across months', () => {

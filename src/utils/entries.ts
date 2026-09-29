@@ -178,13 +178,11 @@ function newestByDay(dreams: readonly Dream[]): Map<string, Dream> {
   return byKey;
 }
 
-/** This month, sunday first: a blank (null) for each cell before the 1st, then every day. */
-export function calendarMonth(dreams: readonly Dream[], now: Date): (CalendarDay | null)[] {
+/** Every day of this month, from the 1st (no weekday columns, so no blanks before it). */
+export function calendarMonth(dreams: readonly Dream[], now: Date): CalendarDay[] {
   const byKey = newestByDay(dreams);
-  const { lead, days } = monthGrid(now.getFullYear(), now.getMonth());
-  const cells: (CalendarDay | null)[] = Array.from({ length: lead }, () => null);
-  for (let d = 1; d <= days; d++) cells.push(calendarDay(new Date(now.getFullYear(), now.getMonth(), d), byKey, now));
-  return cells;
+  const { days } = monthGrid(now.getFullYear(), now.getMonth());
+  return Array.from({ length: days }, (_, i) => calendarDay(new Date(now.getFullYear(), now.getMonth(), i + 1), byKey, now));
 }
 
 /** This week, sunday to saturday (spilling into the next or last month when it has to). */

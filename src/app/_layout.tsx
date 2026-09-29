@@ -10,7 +10,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
-import { BrandColors, Colors, NightColors, PatternColors, SettingsColors, VoiceColors } from '@/constants/theme';
+import { BrandColors, Colors, NightColors, SettingsColors, VoiceColors } from '@/constants/theme';
 import { PERSONALIZING_BACKGROUND } from '@/utils/personalize';
 
 /** Sign-in and onboarding screens swap with a quick fade (iOS; Android uses its own). */
@@ -86,30 +86,10 @@ export default function RootLayout() {
           name="personalizing"
           options={{ headerShown: false, animation: 'fade', animationDuration: QUICK_FADE_MS, gestureEnabled: false, contentStyle: { backgroundColor: PERSONALIZING_BACKGROUND } }}
         />
-        {/* The Today feed: black, full screen, with its own tab bar. */}
+        {/* Today, Visualize, Garden, Entries and Patterns: the tabs, switched instantly. */}
         <Stack.Screen
-          name="home"
+          name="(tabs)"
           options={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: '#000000' } }}
-        />
-        {/* The dreams painted so far, side by side: black, with the same tab bar as home. */}
-        <Stack.Screen
-          name="visualize"
-          options={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: '#000000' } }}
-        />
-        {/* The dream garden: grows with every night a dream is told, with the same tab bar as home. */}
-        <Stack.Screen
-          name="garden"
-          options={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: '#1d1838' } }}
-        />
-        {/* Every dream told, under a night sky, with the same tab bar as home. */}
-        <Stack.Screen
-          name="entries"
-          options={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: '#000' } }}
-        />
-        {/* What keeps coming back across the dreams, with the same tab bar as home. */}
-        <Stack.Screen
-          name="patterns"
-          options={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: PatternColors.background } }}
         />
         {/* Settings, opened from the cog on Patterns: black, with its own back button. */}
         <Stack.Screen name="settings" options={{ headerShown: false, contentStyle: { backgroundColor: SettingsColors.background } }} />

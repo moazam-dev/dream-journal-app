@@ -16,7 +16,6 @@ import { openTab, TAB_BAR_HEIGHT, TabBar, type Tab } from '@/components/today/ta
 import { PatternColors as C, PatternFonts as F } from '@/constants/theme';
 import { useDreams } from '@/hooks/use-dreams';
 import { usePatternReading } from '@/hooks/use-pattern-reading';
-import { loadProfileName } from '@/lib/profile';
 import { weekDays } from '@/utils/entries';
 import { currentStreak } from '@/utils/garden';
 import {
@@ -38,7 +37,6 @@ import {
   reportStats,
   topThemes,
   vividNights,
-  vividNote,
   weekCount,
 } from '@/utils/patterns';
 
@@ -57,10 +55,7 @@ export default function PatternsScreen() {
   const reduceMotion = useReducedMotion();
   const { dreams, loading, error, reload } = useDreams();
   const [now] = useState(() => new Date());
-  const [name] = useState(loadProfileName);
   const [view, setView] = useState<PatternsView>('overview');
-  const [castPick, setCastPick] = useState(0);
-  const [symbolPick, setSymbolPick] = useState(0);
   const [toast, setToast] = useState<{ id: number; text: string } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scroll = useRef<ScrollView>(null);
@@ -99,7 +94,6 @@ export default function PatternsScreen() {
   const moodTitle = useMemo(() => moodHeadline(lately, moods), [lately, moods]);
   const symbols = useMemo(() => pickSymbols(ready, lately, themes.map((theme) => theme.name)), [ready, lately, themes]);
   const vivid = useMemo(() => vividNights(lately), [lately]);
-  const vividLine = useMemo(() => vividNote(lately), [lately]);
 
   const streak = currentStreak(dreams, now);
   const kpis: Kpi[] = [
@@ -110,14 +104,6 @@ export default function PatternsScreen() {
   const monthName = monthLabel(now);
   const headline = monthHeadline(report, ready);
   const shareText = reportShareText(monthName, report, headline);
-  // The reading counts people from the dream text, so its cast wins over the saved names.
-  const visitor = (ready ? cast[0]?.name.toLowerCase() : null) ?? report.topPerson ?? cast[0]?.name.toLowerCase() ?? null;
-  const footer = [
-    ...(visitor ? [{ text: 'Most visited by ' }, { text: visitor, bold: true }] : []),
-    ...(visitor && report.calmestDay ? [{ text: ' · ' }] : []),
-    ...(report.calmestDay ? [{ text: visitor ? 'calmest night was a ' : 'Calmest night was a ' }, { text: report.calmestDay, bold: true }] : []),
-  ];
-
   const tabBarBottom = Math.max(insets.bottom, 8);
 
   function go(next: PatternsView) {
@@ -154,6 +140,11 @@ export default function PatternsScreen() {
     } catch {
       flash('Couldn’t copy the report');
     }
+  }
+
+  /** Back to Home, where the write card starts yapping or typing straight away. */
+  function logDream(start: 'yap' | 'type') {
+    router.navigate({ pathname: '/home', params: { start } });
   }
 
   function pickTab(tab: Tab) {
@@ -211,7 +202,6 @@ export default function PatternsScreen() {
               <ThreadCard
                 status={reading.status}
                 reading={ready}
-                error={reading.error}
                 dreamCount={dreams.length}
                 readingLine={readingLines(Math.min(dreams.length, MAX_READ_DREAMS))[0]}
                 onRetry={startReading}
@@ -220,9 +210,9 @@ export default function PatternsScreen() {
               {themes.length > 0 && <ThemesCard themes={themes} reduceMotion={reduceMotion} />}
               {moodTitle && <MoodCard headline={moodTitle} moods={moods} reduceMotion={reduceMotion} />}
               {symbols.length > 0 && (
-                <SymbolsCard symbols={symbols} selected={symbolPick} onSelect={setSymbolPick} status={reading.status} reduceMotion={reduceMotion} />
+                <SymbolsCard symbols={symbols} reduceMotion={reduceMotion} />
               )}
-              <VividCard nights={vivid} note={vividLine} reduceMotion={reduceMotion} />
+              <VividCard nights={vivid} reduceMotion={reduceMotion} />
               {ready && <QuestionCard question={ready.question} reduceMotion={reduceMotion} />}
             </View>
           ) : (
@@ -231,23 +221,19 @@ export default function PatternsScreen() {
               <StatsGrid kpis={kpis} week={weekDays(dreams, now)} reduceMotion={reduceMotion} />
               <CastCard
                 cast={cast}
-                selected={castPick}
-                onSelect={setCastPick}
                 searching={!tooFew && (readingStatus === 'reading' || readingStatus === 'idle')}
                 reduceMotion={reduceMotion}
               />
               <ReportCard
                 month={monthName}
-                owner={name ? `${name}’s month in dreams` : 'Your month in dreams'}
                 headline={headline}
                 stats={reportStats(report)}
-                footer={footer}
                 onWhatsApp={shareWhatsApp}
                 onShare={shareMore}
                 onCopy={copyReport}
                 reduceMotion={reduceMotion}
               />
-              <LogCard onLog={() => openTab('today', 'patterns')} reduceMotion={reduceMotion} />
+              <LogCard onYap={() => logDream('yap')} onType={() => logDream('type')} reduceMotion={reduceMotion} />
             </View>
           )}
         </ScrollView>

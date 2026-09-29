@@ -40,6 +40,36 @@ export function stageName(growth: number): string {
   return STAGES[stageIndex(growth)][1];
 }
 
+/** Where the garden is headed: this stage, the next one, and how far along the way it is. */
+export type GardenGoal = {
+  /** 1-based, of STAGES.length. */
+  stageNumber: number;
+  stage: string;
+  /** Nights of growth this stage started on. */
+  from: number;
+  /** The next stage and the night it starts on; null once the garden is a whole dream world. */
+  next: { name: string; at: number } | null;
+  /** Nights grown into this stage, and nights it takes to reach the next. */
+  done: number;
+  span: number;
+};
+
+export function gardenGoal(growth: number): GardenGoal {
+  const index = stageIndex(growth);
+  const [from, stage] = STAGES[index];
+  const upcoming = STAGES[index + 1];
+  if (!upcoming) return { stageNumber: index + 1, stage, from, next: null, done: 1, span: 1 };
+  const [at, name] = upcoming;
+  return { stageNumber: index + 1, stage, from, next: { name, at }, done: Math.max(0, growth - from), span: at - from };
+}
+
+/** "3 more nights → young tree", or the finish line once it's whole. */
+export function goalCaption(goal: GardenGoal, growth: number): string {
+  if (!goal.next) return 'a whole dream world ✦';
+  const left = goal.next.at - growth;
+  return `${left} more night${left === 1 ? '' : 's'} → ${goal.next.name}`;
+}
+
 /** One night of growth: the dream that grew it, and the day it was told. */
 export type GrowthNight = { dreamId: string; day: string };
 

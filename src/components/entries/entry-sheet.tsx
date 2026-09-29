@@ -19,7 +19,7 @@ type EntrySheetProps = {
   onDelete: (dream: Dream) => void;
 };
 
-/** White sheet that rises over the Entries screen when a dream is held: recolour it, or delete it. */
+/** Dark sheet that rises over the Entries screen when a dream is held: recolour it, or delete it. */
 export function EntrySheet({ dream, open, bottomInset, reduceMotion, onClose, onColor, onDelete }: EntrySheetProps) {
   // Until the sheet is measured, park it well below the screen.
   const [height, setHeight] = useState(800);
@@ -107,7 +107,7 @@ export function EntrySheet({ dream, open, bottomInset, reduceMotion, onClose, on
   );
 }
 
-const DELETE_RED = '#c2361f';
+const DELETE_RED = '#ff6b57';
 
 const styles = StyleSheet.create({
   scrim: {
@@ -123,7 +123,10 @@ const styles = StyleSheet.create({
     zIndex: 9,
     borderTopLeftRadius: 36,
     borderTopRightRadius: 36,
-    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    borderColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: '#141414',
     paddingTop: 14,
     paddingHorizontal: 20,
     gap: 18,
@@ -133,7 +136,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 5,
     borderRadius: 3,
-    backgroundColor: '#d4d4d4',
+    backgroundColor: 'rgba(255,255,255,0.25)',
   },
   preview: {
     height: 92,
@@ -163,7 +166,7 @@ const styles = StyleSheet.create({
     fontFamily: BrandFonts.medium,
     fontSize: 14,
     lineHeight: 17,
-    color: '#111',
+    color: '#fff',
   },
   swatches: {
     flexDirection: 'row',
@@ -174,19 +177,19 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     borderRadius: 999,
   },
-  // The design's white gap and dark ring around the picked colour.
+  // A dark gap and white ring around the picked colour.
   swatchSelected: {
     outlineWidth: 2,
     outlineOffset: 3,
-    outlineColor: '#111',
+    outlineColor: '#fff',
     outlineStyle: 'solid',
   },
   delete: {
     height: 54,
     borderRadius: 27,
     borderWidth: 1.5,
-    borderColor: '#e6e6e6',
-    backgroundColor: '#fff',
+    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: '#1f1f1f',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

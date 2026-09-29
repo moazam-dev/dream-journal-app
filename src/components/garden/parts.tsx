@@ -1,10 +1,11 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, View, type AccessibilityActionEvent, type GestureResponderEvent } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { HeaderButton } from '@/components/today/brand-bar';
 import { animate, EASE_OUT, FADE } from '@/components/today/motion';
 import { BrandColors, BrandFonts } from '@/constants/theme';
-import { FULL_GROWTH, GARDEN_RULES, type PickCard } from '@/utils/garden';
+import { FULL_GROWTH, GARDEN_RULES, gardenGoal, goalCaption, STAGES, stageName, type PickCard } from '@/utils/garden';
 
 import { BANNER, BREATH, POP, TOAST, UP } from './motion';
 
@@ -80,17 +81,146 @@ export function PickSheet({ card, reduceMotion, onClose, onReread }: PickProps) 
   );
 }
 
-/** "day 12 / 60" and a thin bar, while the demo plays. */
-export function DemoCounter({ day, reduceMotion }: { day: number; reduceMotion: boolean }) {
+/**
+ * The top of the garden: the stage it's at, a bar with a notch for every night of this
+ * stage, and how many more nights until the next one.
+ */
+export function GardenHeading({ growth, reduceMotion }: { growth: number; reduceMotion: boolean }) {
+  const goal = gardenGoal(growth);
+  const caption = goalCaption(goal, growth);
   return (
     <Animated.View
       pointerEvents="none"
-      style={[styles.counter, animate(reduceMotion, { animationName: FADE, animationDuration: 400, animationTimingFunction: 'ease' })]}>
-      <Text style={styles.counterText}>
-        day {day} / {FULL_GROWTH}
+      style={[styles.heading, animate(reduceMotion, { animationName: FADE, animationDuration: 500, animationTimingFunction: 'ease' })]}>
+      <Text style={styles.headingCap}>
+        stage {goal.stageNumber} of {STAGES.length}
       </Text>
-      <View style={styles.counterTrack}>
-        <View style={[styles.counterFill, { width: `${Math.round((day / FULL_GROWTH) * 100)}%` }]} />
+      <Text style={styles.headingTitle} accessibilityRole="header">
+        {goal.stage}
+      </Text>
+      <View
+        style={styles.notches}
+        accessible
+        accessibilityRole="progressbar"
+        accessibilityLabel={caption}
+        accessibilityValue={{ min: 0, max: goal.span, now: goal.done }}>
+        {Array.from({ length: goal.span }, (_, i) => (
+          <View key={i} style={[styles.notch, i < goal.done && styles.notchOn]} />
+        ))}
+      </View>
+      <View style={styles.headingRow}>
+        <Text style={styles.headingNote}>
+          {growth} night{growth === 1 ? '' : 's'} grown
+        </Text>
+        <Text style={[styles.headingNote, styles.headingNext]} numberOfLines={1}>
+          {caption}
+        </Text>
+      </View>
+    </Animated.View>
+  );
+}
+
+/** Size of the scrubber's round handle. */
+const THUMB = 22;
+/** Height of the scrubber's touch area. */
+const SCRUB_HEIGHT = 44;
+
+type ScrubberProps = {
+  day: number;
+  playing: boolean;
+  reduceMotion: boolean;
+  onPlayPause: () => void;
+  /** A finger went down on the bar (the demo stops advancing on its own). */
+  onScrubStart: () => void;
+  /** The night under the finger, 0 to FULL_GROWTH. */
+  onScrub: (day: number) => void;
+};
+
+/**
+ * While the demo plays, in place of the heading: the night it's on, big, and a bar to drag
+ * through all 60 nights of growth (the garden follows the finger).
+ */
+export function DemoScrubber({ day, playing, reduceMotion, onPlayPause, onScrubStart, onScrub }: ScrubberProps) {
+  const [width, setWidth] = useState(0);
+  // Where the finger went down: on the bar, and on the screen.
+  const start = useRef({ x: 0, pageX: 0 });
+
+  function dayAt(x: number) {
+    return width > 0 ? Math.round(Math.min(1, Math.max(0, x / width)) * FULL_GROWTH) : 0;
+  }
+
+  function onGrant(event: GestureResponderEvent) {
+    // The bar's children ignore touches, so locationX is measured from the bar's left edge.
+    start.current = { x: event.nativeEvent.locationX, pageX: event.nativeEvent.pageX };
+    onScrubStart();
+    onScrub(dayAt(start.current.x));
+  }
+
+  function onMove(event: GestureResponderEvent) {
+    onScrub(dayAt(start.current.x + event.nativeEvent.pageX - start.current.pageX));
+  }
+
+  function onAction(event: AccessibilityActionEvent) {
+    const name = event.nativeEvent.actionName;
+    const step = name === 'increment' ? 1 : name === 'decrement' ? -1 : 0;
+    if (!step) return;
+    onScrubStart();
+    onScrub(Math.min(FULL_GROWTH, Math.max(0, day + step)));
+  }
+
+  const fraction = day / FULL_GROWTH;
+  return (
+    <Animated.View
+      style={[styles.demo, animate(reduceMotion, { animationName: FADE, animationDuration: 400, animationTimingFunction: 'ease' })]}>
+      <Text style={styles.demoCap}>day</Text>
+      <Text style={styles.demoDay} accessibilityLiveRegion="polite">
+        {day}
+      </Text>
+      <Text style={styles.demoStage}>
+        of {FULL_GROWTH} · {stageName(day)}
+      </Text>
+      <View style={styles.scrubRow}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={playing ? 'Pause demo' : 'Play demo'}
+          hitSlop={8}
+          onPress={onPlayPause}
+          style={({ pressed }) => [styles.playPause, pressed && styles.primaryPressed]}>
+          {playing ? (
+            <View style={styles.pauseBars}>
+              <View style={styles.pauseBar} />
+              <View style={styles.pauseBar} />
+            </View>
+          ) : (
+            <View style={[styles.play, styles.playDark]} />
+          )}
+        </Pressable>
+        <View
+          style={styles.scrub}
+          onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
+          accessible
+          accessibilityRole="adjustable"
+          accessibilityLabel="Demo night"
+          accessibilityValue={{ min: 0, max: FULL_GROWTH, now: day, text: `night ${day} of ${FULL_GROWTH}, ${stageName(day)}` }}
+          accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
+          onAccessibilityAction={onAction}
+          onStartShouldSetResponder={() => true}
+          onMoveShouldSetResponder={() => true}
+          onResponderTerminationRequest={() => false}
+          onResponderGrant={onGrant}
+          onResponderMove={onMove}>
+          <View pointerEvents="none" style={styles.scrubTrack}>
+            <View style={[styles.scrubFill, { width: `${fraction * 100}%` }]} />
+          </View>
+          {STAGES.slice(1, -1).map(([night]) => (
+            <View
+              key={night}
+              pointerEvents="none"
+              style={[styles.scrubTick, { left: (night / FULL_GROWTH) * width - 1 }, night <= day && styles.scrubTickOn]}
+            />
+          ))}
+          <View pointerEvents="none" style={[styles.scrubThumb, { left: fraction * width - THUMB / 2 }]} />
+        </View>
       </View>
     </Animated.View>
   );
@@ -318,30 +448,161 @@ const styles = StyleSheet.create({
     color: '#fff',
     textDecorationLine: 'underline',
   },
-  counter: {
+  heading: {
     position: 'absolute',
-    left: 22,
+    left: 24,
+    right: 24,
     zIndex: 4,
-    gap: 6,
+    alignItems: 'center',
   },
-  counterText: {
+  headingCap: {
     fontFamily: BrandFonts.semibold,
-    fontSize: 12,
-    lineHeight: 14,
-    letterSpacing: 0.2,
+    fontSize: 11,
+    lineHeight: 13,
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
+    color: BrandColors.lime,
+  },
+  headingTitle: {
+    marginTop: 6,
+    fontFamily: BrandFonts.medium,
+    fontSize: 40,
+    lineHeight: 44,
+    letterSpacing: -1.5,
     color: '#fff',
+    textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 4 },
+    textShadowRadius: 24,
+  },
+  notches: {
+    alignSelf: 'stretch',
+    marginTop: 16,
+    flexDirection: 'row',
+    gap: 4,
+  },
+  notch: {
+    flex: 1,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+  },
+  notchOn: {
+    backgroundColor: BrandColors.lime,
+  },
+  headingRow: {
+    alignSelf: 'stretch',
+    marginTop: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  headingNote: {
+    fontFamily: BrandFonts.medium,
+    fontSize: 13,
+    lineHeight: 16,
+    color: 'rgba(255,255,255,0.8)',
     fontVariant: ['tabular-nums'],
   },
-  counterTrack: {
-    width: 64,
-    height: 2,
-    borderRadius: 1,
-    overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.3)',
+  headingNext: {
+    flexShrink: 1,
+    color: '#fff',
   },
-  counterFill: {
+  demo: {
+    position: 'absolute',
+    left: 24,
+    right: 24,
+    zIndex: 4,
+    alignItems: 'center',
+  },
+  demoCap: {
+    fontFamily: BrandFonts.semibold,
+    fontSize: 11,
+    lineHeight: 13,
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
+    color: BrandColors.lime,
+  },
+  demoDay: {
+    fontFamily: BrandFonts.medium,
+    fontSize: 64,
+    lineHeight: 68,
+    letterSpacing: -2.5,
+    color: '#fff',
+    fontVariant: ['tabular-nums'],
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 4 },
+    textShadowRadius: 24,
+  },
+  demoStage: {
+    fontFamily: BrandFonts.medium,
+    fontSize: 14,
+    lineHeight: 17,
+    color: 'rgba(255,255,255,0.85)',
+  },
+  scrubRow: {
+    alignSelf: 'stretch',
+    marginTop: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  playPause: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: BrandColors.lime,
+  },
+  playDark: {
+    borderLeftColor: '#111',
+  },
+  pauseBars: {
+    flexDirection: 'row',
+    gap: 3,
+  },
+  pauseBar: {
+    width: 3,
+    height: 11,
+    borderRadius: 1,
+    backgroundColor: '#111',
+  },
+  scrub: {
+    flex: 1,
+    height: SCRUB_HEIGHT,
+    justifyContent: 'center',
+  },
+  scrubTrack: {
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.25)',
+  },
+  scrubFill: {
     height: '100%',
+    backgroundColor: BrandColors.lime,
+  },
+  scrubTick: {
+    position: 'absolute',
+    top: SCRUB_HEIGHT / 2 - 6,
+    width: 2,
+    height: 12,
+    borderRadius: 1,
+    backgroundColor: 'rgba(255,255,255,0.35)',
+  },
+  scrubTickOn: {
+    backgroundColor: 'rgba(17,17,17,0.35)',
+  },
+  scrubThumb: {
+    position: 'absolute',
+    top: (SCRUB_HEIGHT - THUMB) / 2,
+    width: THUMB,
+    height: THUMB,
+    borderRadius: THUMB / 2,
     backgroundColor: '#fff',
+    borderWidth: 3,
+    borderColor: BrandColors.lime,
   },
   banner: {
     position: 'absolute',
